@@ -91,7 +91,10 @@ def get_purchase_comparison(id):
     alternatives = []
     for comp_stock in comparison_stocks:
         # Get price of comparison stock on purchase date
-        comp_price_at_purchase = get_price_on_date(comp_stock.ticker, purchase.purchase_date)
+        if comp_stock.ticker == purchase.ticker:
+            comp_price_at_purchase = purchase.price_at_purchase
+        else:
+            comp_price_at_purchase = get_price_on_date(comp_stock.ticker, purchase.purchase_date)
         if comp_price_at_purchase is None:
             continue
 
@@ -150,7 +153,10 @@ def get_purchase_comparison(id):
 
         # Alternative values on this date
         for comp_stock in comparison_stocks:
-            comp_price_at_purchase = get_price_on_date(comp_stock.ticker, purchase.purchase_date)
+            if comp_stock.ticker == purchase.ticker:
+                comp_price_at_purchase = purchase.price_at_purchase
+            else:
+                comp_price_at_purchase = get_price_on_date(comp_stock.ticker, purchase.purchase_date)
             if comp_price_at_purchase:
                 comp_shares = purchase.amount / comp_price_at_purchase
                 comp_prices = price_histories.get(comp_stock.ticker, {})

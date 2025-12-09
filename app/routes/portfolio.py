@@ -34,7 +34,10 @@ def get_portfolio_summary():
 
         for purchase in purchases:
             # Get price of comparison stock on original purchase date
-            comp_price_at_purchase = get_price_on_date(comp_stock.ticker, purchase.purchase_date)
+            if comp_stock.ticker == purchase.ticker:
+                comp_price_at_purchase = purchase.price_at_purchase
+            else:
+                comp_price_at_purchase = get_price_on_date(comp_stock.ticker, purchase.purchase_date)
             if comp_price_at_purchase:
                 # Calculate how many shares we would have bought
                 comp_shares = purchase.amount / comp_price_at_purchase
@@ -114,7 +117,10 @@ def get_portfolio_history():
             for purchase in purchases:
                 if purchase.purchase_date <= date:
                     # Shares we would have bought
-                    comp_price_at_purchase = get_price_on_date(comp_stock.ticker, purchase.purchase_date)
+                    if comp_stock.ticker == purchase.ticker:
+                        comp_price_at_purchase = purchase.price_at_purchase
+                    else:
+                        comp_price_at_purchase = get_price_on_date(comp_stock.ticker, purchase.purchase_date)
                     if comp_price_at_purchase:
                         comp_shares = purchase.amount / comp_price_at_purchase
                         # Value on this date
