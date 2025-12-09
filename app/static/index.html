@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Track the opportunity cost of your stock purchases">
+    <meta name="theme-color" content="#1e40af">
+    <title>Honest Portfolio</title>
+
+    <!-- PWA -->
+    <link rel="manifest" href="/static/manifest.json">
+    <link rel="apple-touch-icon" href="/static/icons/icon-192.png">
+
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <style>
+        [x-cloak] { display: none !important; }
+    </style>
+</head>
+<body class="bg-gray-100 min-h-screen">
+    <div id="app" class="container mx-auto px-4 py-8 max-w-6xl">
+        <!-- Header -->
+        <header class="mb-8">
+            <h1 class="text-3xl font-bold text-gray-800">Honest Portfolio</h1>
+            <p class="text-gray-600">Track the opportunity cost of your stock purchases</p>
+        </header>
+
+        <!-- Add Purchase Form -->
+        <section id="add-purchase-section" class="bg-white rounded-lg shadow-md p-6 mb-8">
+            <h2 class="text-xl font-semibold text-gray-800 mb-4">Add Stock Purchase</h2>
+            <form id="purchase-form" class="grid grid-cols-1 md:grid-cols-4 gap-4">
+                <div>
+                    <label for="ticker" class="block text-sm font-medium text-gray-700 mb-1">Stock Ticker</label>
+                    <input type="text" id="ticker" name="ticker" required
+                           class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                           placeholder="e.g., TSLA">
+                </div>
+                <div>
+                    <label for="purchase-date" class="block text-sm font-medium text-gray-700 mb-1">Purchase Date</label>
+                    <input type="date" id="purchase-date" name="purchase_date" required
+                           class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                </div>
+                <div>
+                    <label for="amount" class="block text-sm font-medium text-gray-700 mb-1">Total Investment ($)</label>
+                    <input type="number" id="amount" name="amount" min="0.01" step="0.01" required
+                           class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                           placeholder="1000.00">
+                </div>
+                <div class="flex items-end">
+                    <button type="submit" id="submit-btn"
+                            class="w-full bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed">
+                        Add Purchase
+                    </button>
+                </div>
+            </form>
+            <div id="form-error" class="hidden mt-3 p-3 bg-red-100 border border-red-400 text-red-700 rounded"></div>
+            <div id="form-success" class="hidden mt-3 p-3 bg-green-100 border border-green-400 text-green-700 rounded"></div>
+        </section>
+
+        <!-- Summary Cards -->
+        <section id="summary-section" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+            <div class="bg-white rounded-lg shadow-md p-6">
+                <h3 class="text-sm font-medium text-gray-500">Total Invested</h3>
+                <p id="total-invested" class="text-2xl font-bold text-gray-800">$0.00</p>
+            </div>
+            <div class="bg-white rounded-lg shadow-md p-6">
+                <h3 class="text-sm font-medium text-gray-500">Your Portfolio Value</h3>
+                <p id="actual-value" class="text-2xl font-bold text-gray-800">$0.00</p>
+                <p id="actual-return" class="text-sm text-gray-500"></p>
+            </div>
+            <div class="bg-white rounded-lg shadow-md p-6">
+                <h3 class="text-sm font-medium text-gray-500">Best Alternative</h3>
+                <p id="best-alt-value" class="text-2xl font-bold text-green-600">$0.00</p>
+                <p id="best-alt-name" class="text-sm text-gray-500"></p>
+            </div>
+            <div class="bg-white rounded-lg shadow-md p-6">
+                <h3 class="text-sm font-medium text-gray-500">Opportunity Cost</h3>
+                <p id="opportunity-cost" class="text-2xl font-bold text-red-600">$0.00</p>
+                <p id="opportunity-cost-desc" class="text-sm text-gray-500"></p>
+            </div>
+        </section>
+
+        <!-- Chart -->
+        <section id="chart-section" class="bg-white rounded-lg shadow-md p-6 mb-8">
+            <h2 class="text-xl font-semibold text-gray-800 mb-4">Portfolio Performance Over Time</h2>
+            <div id="chart-loading" class="text-center py-8 text-gray-500">
+                <p>Add a purchase to see the chart</p>
+            </div>
+            <canvas id="portfolio-chart" class="hidden"></canvas>
+            <div id="chart-legend" class="mt-4 flex flex-wrap gap-2 justify-center"></div>
+        </section>
+
+        <!-- Comparison Table -->
+        <section id="table-section" class="bg-white rounded-lg shadow-md p-6 mb-8">
+            <h2 class="text-xl font-semibold text-gray-800 mb-4">Detailed Comparison</h2>
+            <div class="overflow-x-auto">
+                <table id="comparison-table" class="min-w-full divide-y divide-gray-200">
+                    <thead class="bg-gray-50">
+                        <tr>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Stock</th>
+                            <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Invested</th>
+                            <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Current Value</th>
+                            <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Gain/Loss</th>
+                            <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Return %</th>
+                        </tr>
+                    </thead>
+                    <tbody id="comparison-tbody" class="bg-white divide-y divide-gray-200">
+                        <tr>
+                            <td colspan="5" class="px-6 py-4 text-center text-gray-500">No purchases yet</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+        <!-- Purchases List -->
+        <section id="purchases-section" class="bg-white rounded-lg shadow-md p-6">
+            <h2 class="text-xl font-semibold text-gray-800 mb-4">Your Purchases</h2>
+            <div id="purchases-list" class="space-y-2">
+                <p class="text-gray-500">No purchases yet</p>
+            </div>
+        </section>
+
+        <!-- Purchase Detail View (hidden by default) -->
+        <section id="purchase-detail-section" class="hidden">
+            <!-- Back Button -->
+            <button onclick="navigateBack()"
+                    class="flex items-center text-blue-600 hover:text-blue-800 mb-4 font-medium">
+                <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
+                </svg>
+                Back to Portfolio
+            </button>
+
+            <!-- Loading State -->
+            <div id="detail-loading" class="bg-white rounded-lg shadow-md p-6 text-center">
+                <p class="text-gray-500">Loading purchase details...</p>
+            </div>
+
+            <!-- Error State -->
+            <div id="detail-error" class="hidden bg-red-100 border border-red-400 text-red-700 rounded p-4 mb-4">
+            </div>
+
+            <!-- Detail Content -->
+            <div id="detail-content" class="hidden space-y-6">
+                <!-- Purchase Header -->
+                <div class="bg-white rounded-lg shadow-md p-6">
+                    <h2 class="text-2xl font-bold text-gray-800">
+                        <span id="detail-ticker"></span>
+                        <span class="text-gray-500 text-lg font-normal ml-2">purchased on <span id="detail-date"></span></span>
+                    </h2>
+                    <div class="mt-4 grid grid-cols-2 md:grid-cols-4 gap-4">
+                        <div>
+                            <p class="text-sm text-gray-500">Amount Invested</p>
+                            <p id="detail-amount" class="text-xl font-semibold text-gray-800"></p>
+                        </div>
+                        <div>
+                            <p class="text-sm text-gray-500">Shares Bought</p>
+                            <p id="detail-shares" class="text-xl font-semibold text-gray-800"></p>
+                        </div>
+                        <div>
+                            <p class="text-sm text-gray-500">Price at Purchase</p>
+                            <p id="detail-price-at-purchase" class="text-xl font-semibold text-gray-800"></p>
+                        </div>
+                        <div>
+                            <p class="text-sm text-gray-500">Current Value</p>
+                            <p id="detail-current-value" class="text-xl font-semibold text-gray-800"></p>
+                            <p id="detail-return" class="text-sm"></p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- "What If" Comparison Cards -->
+                <div class="bg-white rounded-lg shadow-md p-6">
+                    <h3 class="text-xl font-semibold text-gray-800 mb-4">If you had bought instead...</h3>
+                    <div id="detail-alternatives" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                        <!-- Alternative cards rendered here -->
+                    </div>
+                </div>
+
+                <!-- Historical Chart -->
+                <div class="bg-white rounded-lg shadow-md p-6">
+                    <h3 class="text-xl font-semibold text-gray-800 mb-4">Performance Over Time</h3>
+                    <canvas id="detail-chart"></canvas>
+                </div>
+
+                <!-- Detailed Comparison Table -->
+                <div class="bg-white rounded-lg shadow-md p-6">
+                    <h3 class="text-xl font-semibold text-gray-800 mb-4">Detailed Comparison</h3>
+                    <div class="overflow-x-auto">
+                        <table class="min-w-full divide-y divide-gray-200">
+                            <thead class="bg-gray-50">
+                                <tr>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Stock</th>
+                                    <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Price Then</th>
+                                    <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Shares</th>
+                                    <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Price Now</th>
+                                    <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Value Now</th>
+                                    <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Return</th>
+                                    <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">vs Your Pick</th>
+                                </tr>
+                            </thead>
+                            <tbody id="detail-comparison-tbody" class="divide-y divide-gray-200">
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </div>
+
+    <!-- Toast Notification Container -->
+    <div id="toast-container" class="fixed top-4 right-4 z-50 flex flex-col gap-3 pointer-events-none"></div>
+
+    <!-- Confirmation Modal -->
+    <div id="confirmation-modal" class="fixed inset-0 z-50 hidden">
+        <!-- Backdrop -->
+        <div class="fixed inset-0 bg-black/50 backdrop-blur-sm" id="modal-backdrop"></div>
+        <!-- Modal Content -->
+        <div class="fixed inset-0 flex items-center justify-center p-4">
+            <div class="bg-white rounded-lg shadow-xl max-w-md w-full p-6 relative" id="modal-content">
+                <div class="flex items-start gap-4">
+                    <div id="modal-icon" class="flex-shrink-0 w-10 h-10 rounded-full bg-red-100 flex items-center justify-center">
+                        <svg class="w-6 h-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
+                        </svg>
+                    </div>
+                    <div class="flex-1">
+                        <h3 id="modal-title" class="text-lg font-semibold text-gray-900">Confirm Action</h3>
+                        <p id="modal-message" class="mt-2 text-sm text-gray-600">Are you sure you want to proceed?</p>
+                    </div>
+                </div>
+                <div class="mt-6 flex justify-end gap-3">
+                    <button id="modal-cancel" class="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-md transition-colors">
+                        Cancel
+                    </button>
+                    <button id="modal-confirm" class="px-4 py-2 text-sm font-medium text-white bg-red-600 hover:bg-red-700 rounded-md transition-colors">
+                        Delete
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="/static/js/app.js"></script>
+</body>
+</html>
