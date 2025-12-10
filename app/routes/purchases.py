@@ -1,7 +1,7 @@
 from flask import Blueprint, request, jsonify
 from app import db
 from app.models import Purchase, ComparisonStock
-from app.services.stock_data import validate_ticker, is_trading_day, get_price_on_date, get_current_price, get_price_history
+from app.services.stock_data import validate_ticker, is_trading_day, get_price_on_date, get_current_price, get_price_history, invalidate_price_cache
 from datetime import datetime
 
 purchases_bp = Blueprint('purchases', __name__)
@@ -60,6 +60,9 @@ def create_purchase():
     db.session.add(purchase)
     db.session.commit()
 
+    # Invalidate price cache to ensure fresh prices on next fetch
+    invalidate_price_cache()
+
     return jsonify(purchase.to_dict()), 201
 
 @purchases_bp.route('/purchases/<int:id>', methods=['DELETE'])
@@ -67,6 +70,10 @@ def delete_purchase(id):
     purchase = Purchase.query.get_or_404(id)
     db.session.delete(purchase)
     db.session.commit()
+
+    # Invalidate price cache to ensure fresh prices on next fetch
+    invalidate_price_cache()
+
     return jsonify({'message': 'Purchase deleted'}), 200
 
 @purchases_bp.route('/purchases/<int:id>/comparison', methods=['GET'])

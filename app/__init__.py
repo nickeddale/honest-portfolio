@@ -1,4 +1,4 @@
-from flask import Flask
+from flask import Flask, send_from_directory
 from flask_sqlalchemy import SQLAlchemy
 from flask_cors import CORS
 import os
@@ -31,10 +31,23 @@ def create_app():
     def index():
         return app.send_static_file('index.html')
 
+    # Serve favicon
+    @app.route('/favicon.ico')
+    def favicon():
+        return send_from_directory(app.static_folder, 'favicon.ico')
+
     # Create tables
     with app.app_context():
         db.create_all()
         from app.models import seed_comparison_stocks
         seed_comparison_stocks()
+
+    # CLI commands
+    @app.cli.command('seed-trades')
+    def seed_trades_command():
+        """Load Trade Republic test data."""
+        from app.seeds.trade_republic_data import seed_trade_republic_data
+        seed_trade_republic_data()
+        print('Trade Republic data seeded successfully!')
 
     return app

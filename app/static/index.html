@@ -65,8 +65,31 @@
             <div id="form-success" class="hidden mt-3 p-3 bg-green-100 border border-green-400 text-green-700 rounded"></div>
         </section>
 
+        <!-- Summary Cards Skeleton -->
+        <section id="summary-skeleton" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8 hidden">
+            <div class="bg-white rounded-lg shadow-md p-6 animate-pulse">
+                <div class="h-4 bg-gray-200 rounded w-24 mb-3"></div>
+                <div class="h-8 bg-gray-200 rounded w-32"></div>
+            </div>
+            <div class="bg-white rounded-lg shadow-md p-6 animate-pulse">
+                <div class="h-4 bg-gray-200 rounded w-32 mb-3"></div>
+                <div class="h-8 bg-gray-200 rounded w-28 mb-2"></div>
+                <div class="h-3 bg-gray-200 rounded w-24"></div>
+            </div>
+            <div class="bg-white rounded-lg shadow-md p-6 animate-pulse">
+                <div class="h-4 bg-gray-200 rounded w-28 mb-3"></div>
+                <div class="h-8 bg-gray-200 rounded w-28 mb-2"></div>
+                <div class="h-3 bg-gray-200 rounded w-20"></div>
+            </div>
+            <div class="bg-white rounded-lg shadow-md p-6 animate-pulse">
+                <div class="h-4 bg-gray-200 rounded w-32 mb-3"></div>
+                <div class="h-8 bg-gray-200 rounded w-28 mb-2"></div>
+                <div class="h-3 bg-gray-200 rounded w-36"></div>
+            </div>
+        </section>
+
         <!-- Summary Cards -->
-        <section id="summary-section" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+        <section id="summary-section" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8 hidden">
             <div class="bg-white rounded-lg shadow-md p-6">
                 <h3 class="text-sm font-medium text-gray-500">Total Invested</h3>
                 <p id="total-invested" class="text-2xl font-bold text-gray-800">$0.00</p>
@@ -88,8 +111,16 @@
             </div>
         </section>
 
+        <!-- Chart Skeleton -->
+        <section id="chart-skeleton" class="bg-white rounded-lg shadow-md p-6 mb-8 hidden">
+            <div class="h-6 bg-gray-200 rounded w-64 mb-4 animate-pulse"></div>
+            <div class="animate-pulse">
+                <div class="h-64 bg-gray-200 rounded"></div>
+            </div>
+        </section>
+
         <!-- Chart -->
-        <section id="chart-section" class="bg-white rounded-lg shadow-md p-6 mb-8">
+        <section id="chart-section" class="bg-white rounded-lg shadow-md p-6 mb-8 hidden">
             <h2 class="text-xl font-semibold text-gray-800 mb-4">Portfolio Performance Over Time</h2>
             <div id="chart-loading" class="text-center py-8 text-gray-500">
                 <p>Add a purchase to see the chart</p>
@@ -121,8 +152,51 @@
             </div>
         </section>
 
+        <!-- Purchases List Skeleton -->
+        <section id="purchases-skeleton" class="bg-white rounded-lg shadow-md p-6 hidden">
+            <div class="h-6 bg-gray-200 rounded w-40 mb-4 animate-pulse"></div>
+            <div class="space-y-2">
+                <div class="animate-pulse bg-gray-50 rounded-lg p-3">
+                    <div class="flex items-center justify-between">
+                        <div class="flex-1">
+                            <div class="h-5 bg-gray-200 rounded w-24 mb-2"></div>
+                            <div class="h-4 bg-gray-200 rounded w-32"></div>
+                        </div>
+                        <div class="flex items-center gap-4">
+                            <div class="h-4 bg-gray-200 rounded w-20"></div>
+                            <div class="h-4 bg-gray-200 rounded w-32"></div>
+                        </div>
+                    </div>
+                </div>
+                <div class="animate-pulse bg-gray-50 rounded-lg p-3">
+                    <div class="flex items-center justify-between">
+                        <div class="flex-1">
+                            <div class="h-5 bg-gray-200 rounded w-28 mb-2"></div>
+                            <div class="h-4 bg-gray-200 rounded w-36"></div>
+                        </div>
+                        <div class="flex items-center gap-4">
+                            <div class="h-4 bg-gray-200 rounded w-24"></div>
+                            <div class="h-4 bg-gray-200 rounded w-28"></div>
+                        </div>
+                    </div>
+                </div>
+                <div class="animate-pulse bg-gray-50 rounded-lg p-3">
+                    <div class="flex items-center justify-between">
+                        <div class="flex-1">
+                            <div class="h-5 bg-gray-200 rounded w-20 mb-2"></div>
+                            <div class="h-4 bg-gray-200 rounded w-40"></div>
+                        </div>
+                        <div class="flex items-center gap-4">
+                            <div class="h-4 bg-gray-200 rounded w-28"></div>
+                            <div class="h-4 bg-gray-200 rounded w-36"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
         <!-- Purchases List -->
-        <section id="purchases-section" class="bg-white rounded-lg shadow-md p-6">
+        <section id="purchases-section" class="bg-white rounded-lg shadow-md p-6 hidden">
             <h2 class="text-xl font-semibold text-gray-800 mb-4">Your Purchases</h2>
             <div id="purchases-list" class="space-y-2">
                 <p class="text-gray-500">No purchases yet</p>

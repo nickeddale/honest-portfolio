@@ -1,5 +1,6 @@
 from app import db
 from datetime import datetime
+from sqlalchemy import Index
 
 class Purchase(db.Model):
     __tablename__ = 'purchases'
@@ -10,6 +11,8 @@ class Purchase(db.Model):
     amount = db.Column(db.Float, nullable=False)
     shares_bought = db.Column(db.Float, nullable=False)
     price_at_purchase = db.Column(db.Float, nullable=False)
+    original_amount = db.Column(db.Float, nullable=True)
+    original_currency = db.Column(db.String(3), nullable=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
     def to_dict(self):
@@ -20,6 +23,8 @@ class Purchase(db.Model):
             'amount': self.amount,
             'shares_bought': self.shares_bought,
             'price_at_purchase': self.price_at_purchase,
+            'original_amount': self.original_amount,
+            'original_currency': self.original_currency,
             'created_at': self.created_at.isoformat()
         }
 
@@ -50,6 +55,7 @@ class PriceCache(db.Model):
 
     __table_args__ = (
         db.UniqueConstraint('ticker', 'date', name='unique_ticker_date'),
+        Index('ix_price_cache_ticker_date', 'ticker', 'date'),
     )
 
 def seed_comparison_stocks():

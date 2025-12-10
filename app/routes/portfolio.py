@@ -1,6 +1,6 @@
 from flask import Blueprint, jsonify
 from app.models import Purchase, ComparisonStock
-from app.services.stock_data import get_price_on_date, get_current_price, get_price_history
+from app.services.stock_data import get_price_on_date, get_current_prices, get_price_history
 
 portfolio_bp = Blueprint('portfolio', __name__)
 
@@ -15,36 +15,53 @@ def get_portfolio_summary():
             'alternatives': []
         })
 
+    # Step 1: Collect all unique tickers (purchases + comparison stocks)
+    purchase_tickers = list(set(p.ticker for p in purchases))
+    comp_tickers = [cs.ticker for cs in comparison_stocks]
+    all_tickers = list(set(purchase_tickers + comp_tickers))
+
+    # Step 2: Batch fetch all current prices ONCE
+    current_prices = get_current_prices(all_tickers)
+
+    # Step 3: Pre-compute comparison stock prices at each unique purchase date
+    unique_purchase_dates = list(set(p.purchase_date for p in purchases))
+    # Build a lookup dict: {(comp_ticker, date): price}
+    comp_prices_at_dates = {}
+    for comp_ticker in comp_tickers:
+        for date in unique_purchase_dates:
+            price = get_price_on_date(comp_ticker, date)
+            comp_prices_at_dates[(comp_ticker, date)] = price
+
     # Calculate actual portfolio
     total_invested = sum(p.amount for p in purchases)
     actual_current_value = 0
 
     for purchase in purchases:
-        current_price = get_current_price(purchase.ticker)
+        current_price = current_prices.get(purchase.ticker)
         if current_price:
             actual_current_value += purchase.shares_bought * current_price
 
     actual_gain_loss = actual_current_value - total_invested
     actual_return_pct = (actual_gain_loss / total_invested * 100) if total_invested > 0 else 0
 
-    # Calculate alternatives
+    # Calculate alternatives using pre-computed data
     alternatives = []
     for comp_stock in comparison_stocks:
         alt_current_value = 0
+        comp_current_price = current_prices.get(comp_stock.ticker)
 
         for purchase in purchases:
             # Get price of comparison stock on original purchase date
             if comp_stock.ticker == purchase.ticker:
                 comp_price_at_purchase = purchase.price_at_purchase
             else:
-                comp_price_at_purchase = get_price_on_date(comp_stock.ticker, purchase.purchase_date)
-            if comp_price_at_purchase:
+                comp_price_at_purchase = comp_prices_at_dates.get((comp_stock.ticker, purchase.purchase_date))
+
+            if comp_price_at_purchase and comp_current_price:
                 # Calculate how many shares we would have bought
                 comp_shares = purchase.amount / comp_price_at_purchase
-                # Get current price
-                comp_current_price = get_current_price(comp_stock.ticker)
-                if comp_current_price:
-                    alt_current_value += comp_shares * comp_current_price
+                # Use pre-fetched current price
+                alt_current_value += comp_shares * comp_current_price
 
         alt_gain_loss = alt_current_value - total_invested
         alt_return_pct = (alt_gain_loss / total_invested * 100) if total_invested > 0 else 0
@@ -96,6 +113,34 @@ def get_portfolio_history():
     else:
         return jsonify({'dates': [], 'actual': [], 'alternatives': {}})
 
+    # Step 1: Pre-compute comparison stock prices at each unique purchase date
+    unique_purchase_dates = list(set(p.purchase_date for p in purchases))
+    # Build a lookup dict: {(comp_ticker, purchase_date): price}
+    comp_prices_at_purchase = {}
+    for comp_ticker in comp_tickers:
+        for purchase_date in unique_purchase_dates:
+            price = get_price_on_date(comp_ticker, purchase_date)
+            comp_prices_at_purchase[(comp_ticker, purchase_date)] = price
+
+    # Step 2: Pre-compute shares bought for each comparison stock per purchase
+    # This eliminates repeated calculations in the date loop
+    # Structure: {(comp_ticker, purchase_id): shares}
+    comp_shares_per_purchase = {}
+    for comp_stock in comparison_stocks:
+        for purchase in purchases:
+            if comp_stock.ticker == purchase.ticker:
+                # Same ticker - use actual purchase price
+                comp_price_at_purchase_date = purchase.price_at_purchase
+            else:
+                # Different ticker - use pre-computed price
+                comp_price_at_purchase_date = comp_prices_at_purchase.get(
+                    (comp_stock.ticker, purchase.purchase_date)
+                )
+
+            if comp_price_at_purchase_date:
+                comp_shares = purchase.amount / comp_price_at_purchase_date
+                comp_shares_per_purchase[(comp_stock.ticker, purchase.id)] = comp_shares
+
     # Calculate portfolio values for each date
     actual_values = []
     alt_values = {cs.ticker: [] for cs in comparison_stocks}
@@ -111,19 +156,15 @@ def get_portfolio_history():
                     actual_value += purchase.shares_bought * price
         actual_values.append(round(actual_value, 2))
 
-        # Alternative portfolio values
+        # Alternative portfolio values using pre-computed shares
         for comp_stock in comparison_stocks:
             alt_value = 0
             for purchase in purchases:
                 if purchase.purchase_date <= date:
-                    # Shares we would have bought
-                    if comp_stock.ticker == purchase.ticker:
-                        comp_price_at_purchase = purchase.price_at_purchase
-                    else:
-                        comp_price_at_purchase = get_price_on_date(comp_stock.ticker, purchase.purchase_date)
-                    if comp_price_at_purchase:
-                        comp_shares = purchase.amount / comp_price_at_purchase
-                        # Value on this date
+                    # Use pre-computed shares
+                    comp_shares = comp_shares_per_purchase.get((comp_stock.ticker, purchase.id))
+                    if comp_shares:
+                        # Value on this date using price history
                         comp_prices = price_histories.get(comp_stock.ticker, {})
                         comp_price = comp_prices.get(date)
                         if comp_price:

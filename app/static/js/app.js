@@ -23,10 +23,21 @@ const comparisonTbody = document.getElementById('comparison-tbody');
 const chartCanvas = document.getElementById('portfolio-chart');
 const chartLoading = document.getElementById('chart-loading');
 
+// Skeleton and content sections
+const summarySkeleton = document.getElementById('summary-skeleton');
+const summarySection = document.getElementById('summary-section');
+const chartSkeleton = document.getElementById('chart-skeleton');
+const chartSection = document.getElementById('chart-section');
+const purchasesSkeleton = document.getElementById('purchases-skeleton');
+const purchasesSection = document.getElementById('purchases-section');
+
 // Initialize
 document.addEventListener('DOMContentLoaded', init);
 
 async function init() {
+    // Show loading state
+    showLoadingState();
+
     // Set max date to today
     const today = new Date().toISOString().split('T')[0];
     document.getElementById('purchase-date').max = today;
@@ -59,8 +70,10 @@ async function loadData() {
             loadPortfolioHistory()
         ]);
         updateUI();
+        hideLoadingState();
     } catch (error) {
         console.error('Error loading data:', error);
+        hideLoadingState();
     }
 }
 
@@ -84,6 +97,36 @@ function updateUI() {
     renderSummaryCards();
     renderComparisonTable();
     renderChart();
+}
+
+function showLoadingState() {
+    // Show skeleton loaders
+    summarySkeleton.classList.remove('hidden');
+    chartSkeleton.classList.remove('hidden');
+    purchasesSkeleton.classList.remove('hidden');
+
+    // Hide actual content
+    summarySection.classList.add('hidden');
+    chartSection.classList.add('hidden');
+    purchasesSection.classList.add('hidden');
+
+    // Disable the "Add Purchase" button
+    submitBtn.disabled = true;
+}
+
+function hideLoadingState() {
+    // Hide skeleton loaders
+    summarySkeleton.classList.add('hidden');
+    chartSkeleton.classList.add('hidden');
+    purchasesSkeleton.classList.add('hidden');
+
+    // Show actual content
+    summarySection.classList.remove('hidden');
+    chartSection.classList.remove('hidden');
+    purchasesSection.classList.remove('hidden');
+
+    // Enable the "Add Purchase" button
+    submitBtn.disabled = false;
 }
 
 async function handlePurchaseSubmit(e) {
