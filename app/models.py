@@ -117,6 +117,46 @@ class PriceCache(db.Model):
     )
 
 
+class PortfolioShare(db.Model):
+    __tablename__ = 'portfolio_shares'
+
+    id = db.Column(db.Integer, primary_key=True)
+    share_token = db.Column(db.String(36), unique=True, nullable=False, index=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+
+    # Snapshot data (percentages only - no dollar amounts for privacy)
+    portfolio_return_pct = db.Column(db.Float, nullable=False)
+    best_benchmark_ticker = db.Column(db.String(10), nullable=False)
+    best_benchmark_name = db.Column(db.String(100), nullable=False)
+    best_benchmark_return_pct = db.Column(db.Float, nullable=False)
+    worst_benchmark_ticker = db.Column(db.String(10), nullable=False)
+    worst_benchmark_name = db.Column(db.String(100), nullable=False)
+    worst_benchmark_return_pct = db.Column(db.Float, nullable=False)
+    opportunity_cost_pct = db.Column(db.Float, nullable=False)  # Difference vs best benchmark
+
+    # Metadata
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    view_count = db.Column(db.Integer, default=0)
+
+    # Relationships
+    user = db.relationship('User', backref=db.backref('shares', lazy=True))
+
+    def to_dict(self):
+        return {
+            'share_token': self.share_token,
+            'portfolio_return_pct': self.portfolio_return_pct,
+            'best_benchmark_ticker': self.best_benchmark_ticker,
+            'best_benchmark_name': self.best_benchmark_name,
+            'best_benchmark_return_pct': self.best_benchmark_return_pct,
+            'worst_benchmark_ticker': self.worst_benchmark_ticker,
+            'worst_benchmark_name': self.worst_benchmark_name,
+            'worst_benchmark_return_pct': self.worst_benchmark_return_pct,
+            'opportunity_cost_pct': self.opportunity_cost_pct,
+            'created_at': self.created_at.isoformat() if self.created_at else None,
+            'view_count': self.view_count
+        }
+
+
 def seed_comparison_stocks():
     """Seed the default comparison stocks if they don't exist."""
     default_stocks = [

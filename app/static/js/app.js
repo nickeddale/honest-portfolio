@@ -425,6 +425,12 @@ function renderSummaryCards() {
         document.getElementById('opportunity-cost-desc').textContent =
             oppCost > 0 ? `You could have earned more with ${best.ticker}` : 'Your picks are outperforming!';
     }
+
+    // Show share button when there's data
+    const shareButtonSection = document.getElementById('share-button-section');
+    if (shareButtonSection && actual.total_invested > 0) {
+        shareButtonSection.classList.remove('hidden');
+    }
 }
 
 function renderComparisonTable() {
@@ -760,6 +766,12 @@ function showPortfolioView() {
     document.getElementById('table-section').classList.remove('hidden');
     document.getElementById('purchases-section').classList.remove('hidden');
 
+    // Show share button if there's data
+    const shareButtonSection = document.getElementById('share-button-section');
+    if (shareButtonSection && portfolioSummary && portfolioSummary.actual.total_invested > 0) {
+        shareButtonSection.classList.remove('hidden');
+    }
+
     // Hide detail section
     document.getElementById('purchase-detail-section').classList.add('hidden');
 }
@@ -774,6 +786,12 @@ function showPurchaseDetail(purchaseId) {
     document.getElementById('chart-section').classList.add('hidden');
     document.getElementById('table-section').classList.add('hidden');
     document.getElementById('purchases-section').classList.add('hidden');
+
+    // Hide share button
+    const shareButtonSection = document.getElementById('share-button-section');
+    if (shareButtonSection) {
+        shareButtonSection.classList.add('hidden');
+    }
 
     // Show detail section
     document.getElementById('purchase-detail-section').classList.remove('hidden');
@@ -1006,4 +1024,161 @@ function showDetailError(message) {
     document.getElementById('detail-loading').classList.add('hidden');
     document.getElementById('detail-error').classList.remove('hidden');
     document.getElementById('detail-error').textContent = message;
+}
+
+// Share functionality
+let currentShareToken = null;
+
+async function openShareModal() {
+    const modal = document.getElementById('share-modal');
+    const shareUrlInput = document.getElementById('share-url');
+    const sharePreview = document.getElementById('share-preview');
+
+    modal.classList.remove('hidden');
+    document.body.style.overflow = 'hidden';
+
+    // Show loading state in preview
+    sharePreview.innerHTML = '<div class="text-center text-gray-500">Loading preview...</div>';
+
+    // Create share token if not exists
+    if (!currentShareToken) {
+        try {
+            const response = await authManager.authFetch(`${API_BASE}/share/create`, {
+                method: 'POST'
+            });
+
+            if (!response.ok) {
+                throw new Error('Failed to create share link');
+            }
+
+            const data = await response.json();
+            currentShareToken = data.share_token;
+            shareUrlInput.value = data.share_url;
+        } catch (error) {
+            showToast('Failed to create share link', 'error');
+            closeShareModal();
+            return;
+        }
+    }
+
+    // Render preview
+    renderSharePreview();
+}
+
+function closeShareModal() {
+    const modal = document.getElementById('share-modal');
+    modal.classList.add('hidden');
+    document.body.style.overflow = '';
+}
+
+async function downloadShareImage() {
+    if (!currentShareToken) {
+        showToast('No share token available', 'error');
+        return;
+    }
+
+    try {
+        const response = await authManager.authFetch(`${API_BASE}/share/${currentShareToken}/image`);
+
+        if (!response.ok) {
+            throw new Error('Failed to download image');
+        }
+
+        const blob = await response.blob();
+        const url = URL.createObjectURL(blob);
+
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'portfolio-summary.png';
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+
+        URL.revokeObjectURL(url);
+        showToast('Image downloaded successfully', 'success');
+    } catch (error) {
+        showToast('Failed to download image', 'error');
+    }
+}
+
+function copyShareLink() {
+    const shareUrlInput = document.getElementById('share-url');
+
+    shareUrlInput.select();
+    shareUrlInput.setSelectionRange(0, 99999); // For mobile devices
+
+    navigator.clipboard.writeText(shareUrlInput.value)
+        .then(() => {
+            showToast('Link copied to clipboard', 'success');
+        })
+        .catch(() => {
+            showToast('Failed to copy link', 'error');
+        });
+}
+
+function renderSharePreview() {
+    if (!portfolioSummary) {
+        return;
+    }
+
+    const sharePreview = document.getElementById('share-preview');
+    const { actual, alternatives } = portfolioSummary;
+
+    // Find best and worst benchmarks
+    const best = alternatives.reduce((a, b) => a.return_pct > b.return_pct ? a : b);
+    const worst = alternatives.reduce((a, b) => a.return_pct < b.return_pct ? a : b);
+
+    // Calculate opportunity cost (vs best alternative)
+    const opportunityCost = best.current_value - actual.current_value;
+
+    // Color classes
+    const yourReturnClass = actual.return_pct >= 0 ? 'text-green-600' : 'text-red-600';
+    const bestReturnClass = best.return_pct >= 0 ? 'text-green-600' : 'text-red-600';
+    const worstReturnClass = worst.return_pct >= 0 ? 'text-green-600' : 'text-red-600';
+    const oppCostClass = opportunityCost > 0 ? 'text-red-600' : 'text-green-600';
+
+    sharePreview.innerHTML = `
+        <div class="bg-gradient-to-br from-blue-500 to-purple-600 p-6 rounded-lg shadow-lg text-white">
+            <h3 class="text-2xl font-bold mb-4">My Portfolio Performance</h3>
+
+            <div class="bg-white/10 backdrop-blur-sm rounded-lg p-4 mb-4">
+                <div class="text-sm text-blue-100 mb-1">Your Return</div>
+                <div class="text-3xl font-bold ${actual.return_pct >= 0 ? 'text-green-300' : 'text-red-300'}">
+                    ${actual.return_pct >= 0 ? '+' : ''}${actual.return_pct.toFixed(2)}%
+                </div>
+            </div>
+
+            <div class="grid grid-cols-2 gap-3 mb-4">
+                <div class="bg-white/10 backdrop-blur-sm rounded-lg p-3">
+                    <div class="text-xs text-blue-100 mb-1">Best Benchmark</div>
+                    <div class="font-semibold">${best.ticker}</div>
+                    <div class="text-sm ${best.return_pct >= 0 ? 'text-green-300' : 'text-red-300'}">
+                        ${best.return_pct >= 0 ? '+' : ''}${best.return_pct.toFixed(2)}%
+                    </div>
+                </div>
+
+                <div class="bg-white/10 backdrop-blur-sm rounded-lg p-3">
+                    <div class="text-xs text-blue-100 mb-1">Worst Benchmark</div>
+                    <div class="font-semibold">${worst.ticker}</div>
+                    <div class="text-sm ${worst.return_pct >= 0 ? 'text-green-300' : 'text-red-300'}">
+                        ${worst.return_pct >= 0 ? '+' : ''}${worst.return_pct.toFixed(2)}%
+                    </div>
+                </div>
+            </div>
+
+            <div class="bg-white/10 backdrop-blur-sm rounded-lg p-3">
+                <div class="text-xs text-blue-100 mb-1">Opportunity Cost</div>
+                <div class="text-xl font-bold ${opportunityCost > 0 ? 'text-red-300' : 'text-green-300'}">
+                    ${opportunityCost > 0 ? '-' : '+'}${formatCurrency(Math.abs(opportunityCost))}
+                </div>
+                <div class="text-xs text-blue-100 mt-1">
+                    ${opportunityCost > 0 ? `vs ${best.ticker}` : 'Beating all benchmarks!'}
+                </div>
+            </div>
+
+            <div class="mt-4 pt-4 border-t border-white/20 text-xs text-blue-100 text-center">
+                Track your portfolio at Honest Portfolio
+            </div>
+        </div>
+    `;
 }

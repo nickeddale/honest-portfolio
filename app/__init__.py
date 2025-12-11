@@ -51,16 +51,19 @@ def create_app():
     from app.routes.stocks import stocks_bp
     from app.routes.auth import auth_bp
     from app.routes.test_auth import test_auth_bp
+    from app.routes.share import share_bp
 
     app.register_blueprint(purchases_bp, url_prefix='/api')
     app.register_blueprint(portfolio_bp, url_prefix='/api')
     app.register_blueprint(stocks_bp, url_prefix='/api')
     app.register_blueprint(auth_bp, url_prefix='/api')
     app.register_blueprint(test_auth_bp, url_prefix='/api')
+    app.register_blueprint(share_bp, url_prefix='/api')
 
     # Exempt certain routes from CSRF
     csrf.exempt(auth_bp)  # OAuth callbacks need to be exempt
     csrf.exempt(test_auth_bp)  # Test endpoints exempt for ease of testing
+    csrf.exempt(share_bp)  # Public GET endpoints need to be exempt
 
     # Serve the SPA
     @app.route('/')
@@ -71,6 +74,11 @@ def create_app():
     @app.route('/login.html')
     def login_page():
         return app.send_static_file('login.html')
+
+    # Serve public share page
+    @app.route('/share/<share_token>')
+    def share_page(share_token):
+        return app.send_static_file('share.html')
 
     # Serve favicon
     @app.route('/favicon.ico')
