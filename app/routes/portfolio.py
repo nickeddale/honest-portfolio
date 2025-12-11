@@ -1,12 +1,16 @@
 from flask import Blueprint, jsonify
+from flask_login import login_required, current_user
 from app.models import Purchase, ComparisonStock
 from app.services.stock_data import get_price_on_date, get_current_prices, get_price_history
 
 portfolio_bp = Blueprint('portfolio', __name__)
 
+
 @portfolio_bp.route('/portfolio/summary', methods=['GET'])
+@login_required
 def get_portfolio_summary():
-    purchases = Purchase.query.all()
+    """Get portfolio summary for the current user."""
+    purchases = Purchase.query.filter_by(user_id=current_user.id).all()
     comparison_stocks = ComparisonStock.query.filter_by(is_default=True).all()
 
     if not purchases:
@@ -85,10 +89,12 @@ def get_portfolio_summary():
         'alternatives': alternatives
     })
 
+
 @portfolio_bp.route('/portfolio/history', methods=['GET'])
+@login_required
 def get_portfolio_history():
     """Get historical portfolio values for charting."""
-    purchases = Purchase.query.order_by(Purchase.purchase_date).all()
+    purchases = Purchase.query.filter_by(user_id=current_user.id).order_by(Purchase.purchase_date).all()
     comparison_stocks = ComparisonStock.query.filter_by(is_default=True).all()
 
     if not purchases:

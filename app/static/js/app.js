@@ -35,6 +35,17 @@ const purchasesSection = document.getElementById('purchases-section');
 document.addEventListener('DOMContentLoaded', init);
 
 async function init() {
+    // Initialize auth manager and check login status
+    await authManager.init();
+
+    if (!authManager.isAuthenticated()) {
+        window.location.href = '/login.html';
+        return;
+    }
+
+    // Update user UI
+    updateUserUI();
+
     // Show loading state
     showLoadingState();
 
@@ -62,6 +73,45 @@ async function init() {
     }
 }
 
+function updateUserUI() {
+    const user = authManager.getCurrentUser();
+    if (!user) return;
+
+    const userSection = document.getElementById('user-section');
+    const userName = document.getElementById('user-name');
+    const userInitials = document.getElementById('user-initials');
+    const userPicture = document.getElementById('user-picture');
+
+    if (userSection) {
+        userSection.classList.remove('hidden');
+    }
+
+    if (userName) {
+        userName.textContent = user.name;
+    }
+
+    if (user.profile_picture) {
+        if (userPicture) {
+            userPicture.src = user.profile_picture;
+            userPicture.classList.remove('hidden');
+        }
+        if (userInitials) {
+            userInitials.classList.add('hidden');
+        }
+    } else {
+        // Show initials
+        if (userInitials) {
+            const initials = user.name
+                .split(' ')
+                .map(n => n[0])
+                .join('')
+                .toUpperCase()
+                .slice(0, 2);
+            userInitials.textContent = initials;
+        }
+    }
+}
+
 async function loadData() {
     try {
         await Promise.all([
@@ -78,18 +128,39 @@ async function loadData() {
 }
 
 async function loadPurchases() {
-    const response = await fetch(`${API_BASE}/purchases`);
-    purchases = await response.json();
+    try {
+        const response = await authManager.authFetch(`${API_BASE}/purchases`);
+        if (!response.ok) throw new Error('Failed to load purchases');
+        purchases = await response.json();
+    } catch (error) {
+        if (error.message !== 'Unauthorized') {
+            console.error('Error loading purchases:', error);
+        }
+    }
 }
 
 async function loadPortfolioSummary() {
-    const response = await fetch(`${API_BASE}/portfolio/summary`);
-    portfolioSummary = await response.json();
+    try {
+        const response = await authManager.authFetch(`${API_BASE}/portfolio/summary`);
+        if (!response.ok) throw new Error('Failed to load portfolio summary');
+        portfolioSummary = await response.json();
+    } catch (error) {
+        if (error.message !== 'Unauthorized') {
+            console.error('Error loading portfolio summary:', error);
+        }
+    }
 }
 
 async function loadPortfolioHistory() {
-    const response = await fetch(`${API_BASE}/portfolio/history`);
-    portfolioHistory = await response.json();
+    try {
+        const response = await authManager.authFetch(`${API_BASE}/portfolio/history`);
+        if (!response.ok) throw new Error('Failed to load portfolio history');
+        portfolioHistory = await response.json();
+    } catch (error) {
+        if (error.message !== 'Unauthorized') {
+            console.error('Error loading portfolio history:', error);
+        }
+    }
 }
 
 function updateUI() {
@@ -144,9 +215,8 @@ async function handlePurchaseSubmit(e) {
     };
 
     try {
-        const response = await fetch(`${API_BASE}/purchases`, {
+        const response = await authManager.authFetch(`${API_BASE}/purchases`, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(data)
         });
 
@@ -180,7 +250,7 @@ async function deletePurchase(id) {
     if (!confirmed) return;
 
     try {
-        await fetch(`${API_BASE}/purchases/${id}`, { method: 'DELETE' });
+        await authManager.authFetch(`${API_BASE}/purchases/${id}`, { method: 'DELETE' });
         showToast('Purchase deleted successfully', 'success');
         await loadData();
     } catch (error) {
@@ -611,7 +681,7 @@ function showPurchaseDetail(purchaseId) {
 // Purchase detail data loading and rendering
 async function loadPurchaseDetail(purchaseId) {
     try {
-        const response = await fetch(`${API_BASE}/purchases/${purchaseId}/comparison`);
+        const response = await authManager.authFetch(`${API_BASE}/purchases/${purchaseId}/comparison`);
         if (!response.ok) {
             if (response.status === 404) {
                 showDetailError('Purchase not found');

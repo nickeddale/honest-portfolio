@@ -1,11 +1,67 @@
 from app import db
 from datetime import datetime
 from sqlalchemy import Index
+from flask_login import UserMixin
+
+
+class User(UserMixin, db.Model):
+    __tablename__ = 'users'
+
+    id = db.Column(db.Integer, primary_key=True)
+    email = db.Column(db.String(255), unique=True, nullable=True)
+    name = db.Column(db.String(100), nullable=False)
+    profile_picture = db.Column(db.String(500))
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    last_login = db.Column(db.DateTime, default=datetime.utcnow)
+
+    # Relationships
+    auth_accounts = db.relationship("UserAuthAccount", backref="user",
+                                    lazy=True, cascade="all, delete-orphan")
+    purchases = db.relationship('Purchase', backref='user',
+                               lazy=True, cascade='all, delete-orphan')
+
+    def to_dict_public(self):
+        """Public user info (safe to expose to frontend)"""
+        return {
+            'id': self.id,
+            'name': self.name,
+            'profile_picture': self.profile_picture
+        }
+
+    def to_dict_profile(self):
+        """Full profile info"""
+        return {
+            'id': self.id,
+            'email': self.email,
+            'name': self.name,
+            'profile_picture': self.profile_picture,
+            'created_at': self.created_at.isoformat() if self.created_at else None,
+            'last_login': self.last_login.isoformat() if self.last_login else None,
+            'providers': [acc.provider for acc in self.auth_accounts]
+        }
+
+
+class UserAuthAccount(db.Model):
+    __tablename__ = 'user_auth_accounts'
+
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    provider = db.Column(db.String(50), nullable=False)  # 'google', 'test'
+    provider_user_id = db.Column(db.String(255), nullable=False)
+    email = db.Column(db.String(255))
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    last_used_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    __table_args__ = (
+        db.UniqueConstraint('provider', 'provider_user_id', name='unique_provider_account'),
+    )
+
 
 class Purchase(db.Model):
     __tablename__ = 'purchases'
 
     id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
     ticker = db.Column(db.String(10), nullable=False)
     purchase_date = db.Column(db.Date, nullable=False)
     amount = db.Column(db.Float, nullable=False)
@@ -28,6 +84,7 @@ class Purchase(db.Model):
             'created_at': self.created_at.isoformat()
         }
 
+
 class ComparisonStock(db.Model):
     __tablename__ = 'comparison_stocks'
 
@@ -44,6 +101,7 @@ class ComparisonStock(db.Model):
             'is_default': self.is_default
         }
 
+
 class PriceCache(db.Model):
     __tablename__ = 'price_cache'
 
@@ -57,6 +115,7 @@ class PriceCache(db.Model):
         db.UniqueConstraint('ticker', 'date', name='unique_ticker_date'),
         Index('ix_price_cache_ticker_date', 'ticker', 'date'),
     )
+
 
 def seed_comparison_stocks():
     """Seed the default comparison stocks if they don't exist."""

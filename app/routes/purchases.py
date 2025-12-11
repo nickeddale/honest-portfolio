@@ -1,4 +1,5 @@
 from flask import Blueprint, request, jsonify
+from flask_login import login_required, current_user
 from app import db
 from app.models import Purchase, ComparisonStock
 from app.services.stock_data import validate_ticker, is_trading_day, get_price_on_date, get_current_price, get_price_history, invalidate_price_cache
@@ -6,13 +7,19 @@ from datetime import datetime
 
 purchases_bp = Blueprint('purchases', __name__)
 
+
 @purchases_bp.route('/purchases', methods=['GET'])
+@login_required
 def get_purchases():
-    purchases = Purchase.query.order_by(Purchase.purchase_date.desc()).all()
+    """Get all purchases for the current user."""
+    purchases = Purchase.query.filter_by(user_id=current_user.id).order_by(Purchase.purchase_date.desc()).all()
     return jsonify([p.to_dict() for p in purchases])
 
+
 @purchases_bp.route('/purchases', methods=['POST'])
+@login_required
 def create_purchase():
+    """Create a new purchase for the current user."""
     data = request.get_json()
 
     # Validate required fields
@@ -50,6 +57,7 @@ def create_purchase():
     shares_bought = amount / price_at_purchase
 
     purchase = Purchase(
+        user_id=current_user.id,
         ticker=ticker,
         purchase_date=purchase_date,
         amount=amount,
@@ -65,9 +73,15 @@ def create_purchase():
 
     return jsonify(purchase.to_dict()), 201
 
+
 @purchases_bp.route('/purchases/<int:id>', methods=['DELETE'])
+@login_required
 def delete_purchase(id):
-    purchase = Purchase.query.get_or_404(id)
+    """Delete a purchase (must belong to current user)."""
+    purchase = Purchase.query.filter_by(id=id, user_id=current_user.id).first()
+    if not purchase:
+        return jsonify({'error': 'Purchase not found'}), 404
+
     db.session.delete(purchase)
     db.session.commit()
 
@@ -76,11 +90,15 @@ def delete_purchase(id):
 
     return jsonify({'message': 'Purchase deleted'}), 200
 
+
 @purchases_bp.route('/purchases/<int:id>/comparison', methods=['GET'])
+@login_required
 def get_purchase_comparison(id):
     """Get comparison data for a single purchase against benchmark stocks."""
-    # Get the purchase
-    purchase = Purchase.query.get_or_404(id)
+    # Get the purchase (must belong to current user)
+    purchase = Purchase.query.filter_by(id=id, user_id=current_user.id).first()
+    if not purchase:
+        return jsonify({'error': 'Purchase not found'}), 404
 
     # Get all default comparison stocks
     comparison_stocks = ComparisonStock.query.filter_by(is_default=True).all()
