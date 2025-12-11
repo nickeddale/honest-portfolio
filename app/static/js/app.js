@@ -14,10 +14,27 @@ let purchaseDetail = null;
 let detailChart = null;
 
 // DOM Elements
-const purchaseForm = document.getElementById('purchase-form');
+// Form elements - Quick Add
+const purchaseFormQuick = document.getElementById('purchase-form-quick');
+const submitBtnQuick = document.getElementById('submit-btn-quick');
+
+// Form elements - Detailed Entry
+const purchaseFormDetailed = document.getElementById('purchase-form-detailed');
+const submitBtnDetailed = document.getElementById('submit-btn-detailed');
+const quantityInput = document.getElementById('quantity-detailed');
+const priceInput = document.getElementById('price-detailed');
+const calculatedAmountSpan = document.getElementById('calculated-amount');
+
+// Tab elements
+const tabQuickAdd = document.getElementById('tab-quick-add');
+const tabDetailedEntry = document.getElementById('tab-detailed-entry');
+const panelQuickAdd = document.getElementById('panel-quick-add');
+const panelDetailedEntry = document.getElementById('panel-detailed-entry');
+
+// Shared form elements
 const formError = document.getElementById('form-error');
 const formSuccess = document.getElementById('form-success');
-const submitBtn = document.getElementById('submit-btn');
+
 const purchasesList = document.getElementById('purchases-list');
 const comparisonTbody = document.getElementById('comparison-tbody');
 const chartCanvas = document.getElementById('portfolio-chart');
@@ -33,6 +50,42 @@ const purchasesSection = document.getElementById('purchases-section');
 
 // Initialize
 document.addEventListener('DOMContentLoaded', init);
+
+function switchTab(tab) {
+    if (tab === 'quick-add') {
+        // Update tab styles
+        tabQuickAdd.classList.add('text-blue-600', 'border-blue-600');
+        tabQuickAdd.classList.remove('text-gray-500', 'border-transparent');
+        tabDetailedEntry.classList.remove('text-blue-600', 'border-blue-600');
+        tabDetailedEntry.classList.add('text-gray-500', 'border-transparent');
+
+        // Show/hide panels
+        panelQuickAdd.classList.remove('hidden');
+        panelDetailedEntry.classList.add('hidden');
+    } else {
+        // Update tab styles
+        tabDetailedEntry.classList.add('text-blue-600', 'border-blue-600');
+        tabDetailedEntry.classList.remove('text-gray-500', 'border-transparent');
+        tabQuickAdd.classList.remove('text-blue-600', 'border-blue-600');
+        tabQuickAdd.classList.add('text-gray-500', 'border-transparent');
+
+        // Show/hide panels
+        panelDetailedEntry.classList.remove('hidden');
+        panelQuickAdd.classList.add('hidden');
+    }
+}
+
+function setupDetailedEntryCalculation() {
+    const updateCalculatedAmount = () => {
+        const quantity = parseFloat(quantityInput.value) || 0;
+        const price = parseFloat(priceInput.value) || 0;
+        const total = quantity * price;
+        calculatedAmountSpan.textContent = formatCurrency(total);
+    };
+
+    quantityInput.addEventListener('input', updateCalculatedAmount);
+    priceInput.addEventListener('input', updateCalculatedAmount);
+}
 
 async function init() {
     // Initialize auth manager and check login status
@@ -51,13 +104,22 @@ async function init() {
 
     // Set max date to today
     const today = new Date().toISOString().split('T')[0];
-    document.getElementById('purchase-date').max = today;
+    document.getElementById('purchase-date-quick').max = today;
+    document.getElementById('purchase-date-detailed').max = today;
 
     // Load data
     await loadData();
 
-    // Setup form handler
-    purchaseForm.addEventListener('submit', handlePurchaseSubmit);
+    // Setup form handlers
+    purchaseFormQuick.addEventListener('submit', handleQuickAddSubmit);
+    purchaseFormDetailed.addEventListener('submit', handleDetailedEntrySubmit);
+
+    // Setup tab switching
+    tabQuickAdd.addEventListener('click', () => switchTab('quick-add'));
+    tabDetailedEntry.addEventListener('click', () => switchTab('detailed-entry'));
+
+    // Setup auto-calculation for detailed entry
+    setupDetailedEntryCalculation();
 
     // Initialize router
     initRouter();
@@ -181,8 +243,9 @@ function showLoadingState() {
     chartSection.classList.add('hidden');
     purchasesSection.classList.add('hidden');
 
-    // Disable the "Add Purchase" button
-    submitBtn.disabled = true;
+    // Disable the "Add Purchase" buttons
+    submitBtnQuick.disabled = true;
+    submitBtnDetailed.disabled = true;
 }
 
 function hideLoadingState() {
@@ -196,22 +259,24 @@ function hideLoadingState() {
     chartSection.classList.remove('hidden');
     purchasesSection.classList.remove('hidden');
 
-    // Enable the "Add Purchase" button
-    submitBtn.disabled = false;
+    // Enable the "Add Purchase" buttons
+    submitBtnQuick.disabled = false;
+    submitBtnDetailed.disabled = false;
 }
 
-async function handlePurchaseSubmit(e) {
+async function handleQuickAddSubmit(e) {
     e.preventDefault();
 
     hideMessages();
-    submitBtn.disabled = true;
-    submitBtn.textContent = 'Adding...';
+    submitBtnQuick.disabled = true;
+    submitBtnQuick.textContent = 'Adding...';
 
-    const formData = new FormData(purchaseForm);
+    const formData = new FormData(purchaseFormQuick);
     const data = {
         ticker: formData.get('ticker').toUpperCase(),
         purchase_date: formData.get('purchase_date'),
-        amount: parseFloat(formData.get('amount'))
+        amount: parseFloat(formData.get('amount')),
+        entry_mode: 'quick'
     };
 
     try {
@@ -228,13 +293,57 @@ async function handlePurchaseSubmit(e) {
         }
 
         showSuccess(`Added $${data.amount.toFixed(2)} investment in ${data.ticker}`);
-        purchaseForm.reset();
+        purchaseFormQuick.reset();
         await loadData();
     } catch (error) {
         showError('Network error. Please try again.');
     } finally {
-        submitBtn.disabled = false;
-        submitBtn.textContent = 'Add Purchase';
+        submitBtnQuick.disabled = false;
+        submitBtnQuick.textContent = 'Add Purchase';
+    }
+}
+
+async function handleDetailedEntrySubmit(e) {
+    e.preventDefault();
+
+    hideMessages();
+    submitBtnDetailed.disabled = true;
+    submitBtnDetailed.textContent = 'Adding...';
+
+    const formData = new FormData(purchaseFormDetailed);
+    const quantity = parseFloat(formData.get('quantity'));
+    const pricePerShare = parseFloat(formData.get('price_per_share'));
+    const data = {
+        ticker: formData.get('ticker').toUpperCase(),
+        purchase_date: formData.get('purchase_date'),
+        quantity: quantity,
+        price_per_share: pricePerShare,
+        entry_mode: 'detailed'
+    };
+
+    try {
+        const response = await authManager.authFetch(`${API_BASE}/purchases`, {
+            method: 'POST',
+            body: JSON.stringify(data)
+        });
+
+        const result = await response.json();
+
+        if (!response.ok) {
+            showError(result.error || 'Failed to add purchase');
+            return;
+        }
+
+        const amount = quantity * pricePerShare;
+        showSuccess(`Added ${quantity.toFixed(4)} shares of ${data.ticker} at ${formatCurrency(pricePerShare)} per share`);
+        purchaseFormDetailed.reset();
+        calculatedAmountSpan.textContent = '$0.00';
+        await loadData();
+    } catch (error) {
+        showError('Network error. Please try again.');
+    } finally {
+        submitBtnDetailed.disabled = false;
+        submitBtnDetailed.textContent = 'Add Purchase';
     }
 }
 

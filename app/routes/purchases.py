@@ -22,23 +22,18 @@ def create_purchase():
     """Create a new purchase for the current user."""
     data = request.get_json()
 
-    # Validate required fields
-    if not all(k in data for k in ['ticker', 'purchase_date', 'amount']):
-        return jsonify({'error': 'Missing required fields: ticker, purchase_date, amount'}), 400
+    # Get entry mode, defaulting to 'quick' for backward compatibility
+    entry_mode = data.get('entry_mode', 'quick')
+
+    # Validate required fields (ticker and purchase_date are always required)
+    if not all(k in data for k in ['ticker', 'purchase_date']):
+        return jsonify({'error': 'Missing required fields: ticker, purchase_date'}), 400
 
     ticker = data['ticker'].upper()
     try:
         purchase_date = datetime.strptime(data['purchase_date'], '%Y-%m-%d').date()
     except ValueError:
         return jsonify({'error': 'Invalid date format. Use YYYY-MM-DD'}), 400
-
-    try:
-        amount = float(data['amount'])
-    except (ValueError, TypeError):
-        return jsonify({'error': 'amount must be a valid number'}), 400
-
-    if amount <= 0:
-        return jsonify({'error': 'amount must be positive'}), 400
 
     # Validate ticker
     if not validate_ticker(ticker):
@@ -48,13 +43,53 @@ def create_purchase():
     if not is_trading_day(purchase_date):
         return jsonify({'error': 'Purchase date must be a valid trading day (not weekend or holiday)'}), 400
 
-    # Look up historical price on purchase date
-    price_at_purchase = get_price_on_date(ticker, purchase_date)
-    if price_at_purchase is None:
-        return jsonify({'error': f'Unable to fetch price for {ticker} on {purchase_date}'}), 500
+    # Handle entry mode logic
+    if entry_mode == 'detailed':
+        # Detailed mode: require quantity and price_per_share
+        if not all(k in data for k in ['quantity', 'price_per_share']):
+            return jsonify({'error': 'Missing required fields for detailed mode: quantity, price_per_share'}), 400
 
-    # Calculate shares bought from amount and price
-    shares_bought = amount / price_at_purchase
+        try:
+            quantity = float(data['quantity'])
+        except (ValueError, TypeError):
+            return jsonify({'error': 'quantity must be a valid number'}), 400
+
+        try:
+            price_per_share = float(data['price_per_share'])
+        except (ValueError, TypeError):
+            return jsonify({'error': 'price_per_share must be a valid number'}), 400
+
+        if quantity <= 0:
+            return jsonify({'error': 'quantity must be positive'}), 400
+
+        if price_per_share <= 0:
+            return jsonify({'error': 'price_per_share must be positive'}), 400
+
+        # Set values for detailed mode
+        shares_bought = quantity
+        price_at_purchase = price_per_share
+        amount = shares_bought * price_at_purchase
+
+    else:
+        # Quick mode: require amount, fetch price from yfinance
+        if 'amount' not in data:
+            return jsonify({'error': 'Missing required field: amount'}), 400
+
+        try:
+            amount = float(data['amount'])
+        except (ValueError, TypeError):
+            return jsonify({'error': 'amount must be a valid number'}), 400
+
+        if amount <= 0:
+            return jsonify({'error': 'amount must be positive'}), 400
+
+        # Look up historical price on purchase date
+        price_at_purchase = get_price_on_date(ticker, purchase_date)
+        if price_at_purchase is None:
+            return jsonify({'error': f'Unable to fetch price for {ticker} on {purchase_date}'}), 500
+
+        # Calculate shares bought from amount and price
+        shares_bought = amount / price_at_purchase
 
     purchase = Purchase(
         user_id=current_user.id,
