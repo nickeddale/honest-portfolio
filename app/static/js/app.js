@@ -1094,9 +1094,10 @@ async function downloadShareImage() {
         a.click();
         document.body.removeChild(a);
 
-        URL.revokeObjectURL(url);
+        setTimeout(() => URL.revokeObjectURL(url), 100);
         showToast('Image downloaded successfully', 'success');
     } catch (error) {
+        console.error('Download error:', error);
         showToast('Failed to download image', 'error');
     }
 }
