@@ -7,65 +7,56 @@
     <meta name="description" content="Track your portfolio's opportunity cost">
     <link rel="icon" href="/favicon.ico" type="image/x-icon">
     <link rel="manifest" href="/static/manifest.json">
-    <meta name="theme-color" content="#2563eb">
+    <meta name="theme-color" content="#3b82f6">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Archivo+Black&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
-        .google-btn {
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 12px;
-            background-color: white;
-            border: 1px solid #dadce0;
-            border-radius: 4px;
-            padding: 10px 24px;
-            font-size: 14px;
-            font-weight: 500;
-            color: #3c4043;
-            cursor: pointer;
-            transition: background-color 0.2s, box-shadow 0.2s;
+        :root {
+            --font-head: 'Archivo Black', sans-serif;
+            --font-sans: 'Space Grotesk', sans-serif;
+            --background: #f5f5f4;
+            --foreground: #1c1917;
+            --card: #ffffff;
+            --primary: #3b82f6;
+            --primary-foreground: #ffffff;
+            --secondary: #fde047;
+            --border: #1c1917;
+            --muted: #e7e5e4;
+            --muted-foreground: #78716c;
         }
-        .google-btn:hover {
-            background-color: #f8f9fa;
-            box-shadow: 0 1px 2px 0 rgba(60,64,67,0.3), 0 1px 3px 1px rgba(60,64,67,0.15);
+        body {
+            font-family: var(--font-sans);
         }
-        .google-btn svg {
-            width: 18px;
-            height: 18px;
-        }
-        .dev-btn {
-            background-color: #f3f4f6;
-            border: 1px solid #d1d5db;
-            color: #374151;
-        }
-        .dev-btn:hover {
-            background-color: #e5e7eb;
+        h1, h2, h3 {
+            font-family: var(--font-head);
         }
     </style>
 </head>
-<body class="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center p-4">
-    <div class="bg-white rounded-2xl shadow-xl p-8 w-full max-w-md">
+<body class="min-h-screen bg-[var(--background)] flex items-center justify-center p-4">
+    <div class="bg-[var(--card)] border-2 border-[var(--border)] rounded shadow-lg p-8 w-full max-w-md">
         <!-- Logo and Title -->
         <div class="text-center mb-8">
-            <div class="w-16 h-16 bg-blue-600 rounded-2xl flex items-center justify-center mx-auto mb-4">
+            <div class="w-16 h-16 bg-[var(--primary)] border-2 border-[var(--border)] rounded flex items-center justify-center mx-auto mb-4 shadow-md">
                 <svg class="w-10 h-10 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
                 </svg>
             </div>
-            <h1 class="text-2xl font-bold text-gray-900">Honest Portfolio</h1>
-            <p class="text-gray-500 mt-2">Track your portfolio's opportunity cost</p>
+            <h1 class="text-2xl font-bold text-[var(--foreground)]">Honest Portfolio</h1>
+            <p class="text-[var(--muted-foreground)] mt-2">Track your portfolio's opportunity cost</p>
         </div>
 
         <!-- Error Message -->
-        <div id="error-message" class="hidden mb-4 p-3 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm">
+        <div id="error-message" class="hidden mb-4 p-3 bg-red-50 border-2 border-[var(--border)] rounded text-red-700 text-sm font-medium">
             Authentication failed. Please try again.
         </div>
 
         <!-- Login Buttons -->
         <div class="space-y-4">
             <!-- Google Sign In -->
-            <button id="google-login-btn" class="google-btn w-full" onclick="authManager.loginWith('google')">
-                <svg viewBox="0 0 24 24">
+            <button id="google-login-btn" class="flex items-center justify-center gap-3 w-full bg-[var(--card)] border-2 border-[var(--border)] rounded py-3 px-6 shadow-md hover:shadow-none hover:translate-y-0.5 active:translate-y-1 transition-all font-medium" onclick="authManager.loginWith('google')">
+                <svg class="w-5 h-5" viewBox="0 0 24 24">
                     <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
                     <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
                     <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
@@ -75,7 +66,7 @@
             </button>
 
             <!-- Dev Login (hidden by default) -->
-            <button id="dev-login-btn" class="google-btn dev-btn w-full hidden" onclick="authManager.devLogin()">
+            <button id="dev-login-btn" class="flex items-center justify-center gap-3 w-full bg-[var(--muted)] border-2 border-[var(--border)] rounded py-3 px-6 shadow-md hover:shadow-none hover:translate-y-0.5 active:translate-y-1 transition-all font-medium text-[var(--foreground)] hidden" onclick="authManager.devLogin()">
                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4"/>
                 </svg>
@@ -84,7 +75,7 @@
         </div>
 
         <!-- Footer -->
-        <div class="mt-8 text-center text-sm text-gray-500">
+        <div class="mt-8 text-center text-sm text-[var(--muted-foreground)]">
             <p>By signing in, you agree to our terms of service.</p>
         </div>
     </div>

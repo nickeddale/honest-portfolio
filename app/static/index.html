@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="description" content="Track the opportunity cost of your stock purchases">
-    <meta name="theme-color" content="#1e40af">
+    <meta name="theme-color" content="#3b82f6">
     <title>Honest Portfolio</title>
 
     <!-- Favicon -->
@@ -17,14 +17,40 @@
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
 
+    <!-- RetroUI Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Archivo+Black&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+
     <!-- Chart.js -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
     <style>
+        :root {
+            --font-head: 'Archivo Black', sans-serif;
+            --font-sans: 'Space Grotesk', sans-serif;
+            --background: #f5f5f4;
+            --foreground: #1c1917;
+            --card: #ffffff;
+            --primary: #3b82f6;
+            --primary-foreground: #ffffff;
+            --secondary: #fde047;
+            --border: #1c1917;
+            --muted: #e7e5e4;
+            --muted-foreground: #78716c;
+            --destructive: #ef4444;
+            --success: #22c55e;
+        }
+        body {
+            font-family: var(--font-sans);
+        }
+        h1, h2, h3, h4, h5, h6 {
+            font-family: var(--font-head);
+        }
         [x-cloak] { display: none !important; }
     </style>
 </head>
-<body class="bg-gray-100 min-h-screen">
+<body class="bg-[var(--background)] min-h-screen">
     <div id="app" class="container mx-auto px-4 py-8 max-w-6xl">
         <!-- Header -->
         <header class="mb-8 flex items-start justify-between gap-4">
@@ -53,17 +79,17 @@
         </header>
 
         <!-- Add Purchase Form -->
-        <section id="add-purchase-section" class="bg-white rounded-lg shadow-md p-6 mb-8">
+        <section id="add-purchase-section" class="bg-[var(--card)] border-2 border-[var(--border)] rounded shadow-md hover:shadow-none transition-all p-6 mb-8">
             <h2 class="text-xl font-semibold text-gray-800 mb-4">Add Stock Purchase</h2>
 
             <!-- Tab Navigation -->
             <div class="flex border-b border-gray-200 mb-4">
                 <button type="button" id="tab-quick-add"
-                        class="px-4 py-2 text-sm font-medium text-blue-600 border-b-2 border-blue-600 -mb-px">
+                        class="px-4 py-2 text-sm font-medium text-[var(--primary)] border-b-2 border-[var(--primary)] -mb-px">
                     Quick Add
                 </button>
                 <button type="button" id="tab-detailed-entry"
-                        class="px-4 py-2 text-sm font-medium text-gray-500 hover:text-gray-700 border-b-2 border-transparent -mb-px">
+                        class="px-4 py-2 text-sm font-medium text-[var(--muted-foreground)] hover:text-[var(--foreground)] border-b-2 border-transparent -mb-px">
                     Detailed Entry
                 </button>
             </div>
@@ -74,23 +100,23 @@
                     <div>
                         <label for="ticker-quick" class="block text-sm font-medium text-gray-700 mb-1">Stock Ticker</label>
                         <input type="text" id="ticker-quick" name="ticker" required
-                               class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                               class="w-full px-4 py-2 border-2 border-[var(--border)] rounded shadow-md focus:outline-none focus:shadow-sm transition-all"
                                placeholder="e.g., TSLA">
                     </div>
                     <div>
                         <label for="purchase-date-quick" class="block text-sm font-medium text-gray-700 mb-1">Purchase Date</label>
                         <input type="date" id="purchase-date-quick" name="purchase_date" required
-                               class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                               class="w-full px-4 py-2 border-2 border-[var(--border)] rounded shadow-md focus:outline-none focus:shadow-sm transition-all">
                     </div>
                     <div>
                         <label for="amount-quick" class="block text-sm font-medium text-gray-700 mb-1">Total Investment ($)</label>
                         <input type="number" id="amount-quick" name="amount" min="0.01" step="0.01" required
-                               class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                               class="w-full px-4 py-2 border-2 border-[var(--border)] rounded shadow-md focus:outline-none focus:shadow-sm transition-all"
                                placeholder="1000.00">
                     </div>
                     <div class="flex items-end">
                         <button type="submit" id="submit-btn-quick"
-                                class="w-full bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed">
+                                class="w-full bg-[var(--primary)] text-[var(--primary-foreground)] border-2 border-[var(--border)] py-2 px-4 rounded shadow-md hover:shadow-none hover:translate-y-0.5 active:translate-y-1 transition-all disabled:opacity-50 disabled:cursor-not-allowed">
                             Add Purchase
                         </button>
                     </div>
@@ -104,29 +130,29 @@
                     <div>
                         <label for="ticker-detailed" class="block text-sm font-medium text-gray-700 mb-1">Stock Ticker</label>
                         <input type="text" id="ticker-detailed" name="ticker" required
-                               class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                               class="w-full px-4 py-2 border-2 border-[var(--border)] rounded shadow-md focus:outline-none focus:shadow-sm transition-all"
                                placeholder="e.g., TSLA">
                     </div>
                     <div>
                         <label for="purchase-date-detailed" class="block text-sm font-medium text-gray-700 mb-1">Purchase Date</label>
                         <input type="date" id="purchase-date-detailed" name="purchase_date" required
-                               class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                               class="w-full px-4 py-2 border-2 border-[var(--border)] rounded shadow-md focus:outline-none focus:shadow-sm transition-all">
                     </div>
                     <div>
                         <label for="quantity-detailed" class="block text-sm font-medium text-gray-700 mb-1">Shares</label>
                         <input type="number" id="quantity-detailed" name="quantity" min="0.0001" step="0.0001" required
-                               class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                               class="w-full px-4 py-2 border-2 border-[var(--border)] rounded shadow-md focus:outline-none focus:shadow-sm transition-all"
                                placeholder="10.5">
                     </div>
                     <div>
                         <label for="price-detailed" class="block text-sm font-medium text-gray-700 mb-1">Price per Share ($)</label>
                         <input type="number" id="price-detailed" name="price_per_share" min="0.01" step="0.01" required
-                               class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                               class="w-full px-4 py-2 border-2 border-[var(--border)] rounded shadow-md focus:outline-none focus:shadow-sm transition-all"
                                placeholder="150.00">
                     </div>
                     <div class="flex items-end">
                         <button type="submit" id="submit-btn-detailed"
-                                class="w-full bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed">
+                                class="w-full bg-[var(--primary)] text-[var(--primary-foreground)] border-2 border-[var(--border)] py-2 px-4 rounded shadow-md hover:shadow-none hover:translate-y-0.5 active:translate-y-1 transition-all disabled:opacity-50 disabled:cursor-not-allowed">
                             Add Purchase
                         </button>
                     </div>
@@ -137,27 +163,27 @@
                 </p>
             </div>
 
-            <div id="form-error" class="hidden mt-3 p-3 bg-red-100 border border-red-400 text-red-700 rounded"></div>
-            <div id="form-success" class="hidden mt-3 p-3 bg-green-100 border border-green-400 text-green-700 rounded"></div>
+            <div id="form-error" class="hidden mt-3 p-3 bg-red-100 border-2 border-[var(--destructive)] text-red-700 rounded"></div>
+            <div id="form-success" class="hidden mt-3 p-3 bg-green-100 border-2 border-[var(--success)] text-green-700 rounded"></div>
         </section>
 
         <!-- Summary Cards Skeleton -->
         <section id="summary-skeleton" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8 hidden">
-            <div class="bg-white rounded-lg shadow-md p-6 animate-pulse">
+            <div class="bg-[var(--card)] border-2 border-[var(--border)] rounded shadow-md hover:shadow-none transition-all p-6 animate-pulse">
                 <div class="h-4 bg-gray-200 rounded w-24 mb-3"></div>
                 <div class="h-8 bg-gray-200 rounded w-32"></div>
             </div>
-            <div class="bg-white rounded-lg shadow-md p-6 animate-pulse">
+            <div class="bg-[var(--card)] border-2 border-[var(--border)] rounded shadow-md hover:shadow-none transition-all p-6 animate-pulse">
                 <div class="h-4 bg-gray-200 rounded w-32 mb-3"></div>
                 <div class="h-8 bg-gray-200 rounded w-28 mb-2"></div>
                 <div class="h-3 bg-gray-200 rounded w-24"></div>
             </div>
-            <div class="bg-white rounded-lg shadow-md p-6 animate-pulse">
+            <div class="bg-[var(--card)] border-2 border-[var(--border)] rounded shadow-md hover:shadow-none transition-all p-6 animate-pulse">
                 <div class="h-4 bg-gray-200 rounded w-28 mb-3"></div>
                 <div class="h-8 bg-gray-200 rounded w-28 mb-2"></div>
                 <div class="h-3 bg-gray-200 rounded w-20"></div>
             </div>
-            <div class="bg-white rounded-lg shadow-md p-6 animate-pulse">
+            <div class="bg-[var(--card)] border-2 border-[var(--border)] rounded shadow-md hover:shadow-none transition-all p-6 animate-pulse">
                 <div class="h-4 bg-gray-200 rounded w-32 mb-3"></div>
                 <div class="h-8 bg-gray-200 rounded w-28 mb-2"></div>
                 <div class="h-3 bg-gray-200 rounded w-36"></div>
@@ -166,21 +192,21 @@
 
         <!-- Summary Cards -->
         <section id="summary-section" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8 hidden">
-            <div class="bg-white rounded-lg shadow-md p-6">
+            <div class="bg-[var(--card)] border-2 border-[var(--border)] rounded shadow-md hover:shadow-none transition-all p-6">
                 <h3 class="text-sm font-medium text-gray-500">Total Invested</h3>
                 <p id="total-invested" class="text-2xl font-bold text-gray-800">$0.00</p>
             </div>
-            <div class="bg-white rounded-lg shadow-md p-6">
+            <div class="bg-[var(--card)] border-2 border-[var(--border)] rounded shadow-md hover:shadow-none transition-all p-6">
                 <h3 class="text-sm font-medium text-gray-500">Your Portfolio Value</h3>
                 <p id="actual-value" class="text-2xl font-bold text-gray-800">$0.00</p>
                 <p id="actual-return" class="text-sm text-gray-500"></p>
             </div>
-            <div class="bg-white rounded-lg shadow-md p-6">
+            <div class="bg-[var(--card)] border-2 border-[var(--border)] rounded shadow-md hover:shadow-none transition-all p-6">
                 <h3 class="text-sm font-medium text-gray-500">Best Alternative</h3>
                 <p id="best-alt-value" class="text-2xl font-bold text-green-600">$0.00</p>
                 <p id="best-alt-name" class="text-sm text-gray-500"></p>
             </div>
-            <div class="bg-white rounded-lg shadow-md p-6">
+            <div class="bg-[var(--card)] border-2 border-[var(--border)] rounded shadow-md hover:shadow-none transition-all p-6">
                 <h3 class="text-sm font-medium text-gray-500">Opportunity Cost</h3>
                 <p id="opportunity-cost" class="text-2xl font-bold text-red-600">$0.00</p>
                 <p id="opportunity-cost-desc" class="text-sm text-gray-500"></p>
@@ -190,7 +216,7 @@
         <!-- Share Button (shown when there's data) -->
         <div id="share-button-section" class="hidden mb-8 flex justify-end">
             <button onclick="openShareModal()"
-                    class="inline-flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors shadow-md">
+                    class="inline-flex items-center gap-2 bg-[var(--primary)] text-[var(--primary-foreground)] border-2 border-[var(--border)] px-4 py-2 rounded shadow-md hover:shadow-none hover:translate-y-0.5 transition-all">
                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z"/>
                 </svg>
@@ -199,7 +225,7 @@
         </div>
 
         <!-- Chart Skeleton -->
-        <section id="chart-skeleton" class="bg-white rounded-lg shadow-md p-6 mb-8 hidden">
+        <section id="chart-skeleton" class="bg-[var(--card)] border-2 border-[var(--border)] rounded shadow-md hover:shadow-none transition-all p-6 mb-8 hidden">
             <div class="h-6 bg-gray-200 rounded w-64 mb-4 animate-pulse"></div>
             <div class="animate-pulse">
                 <div class="h-64 bg-gray-200 rounded"></div>
@@ -207,7 +233,7 @@
         </section>
 
         <!-- Chart -->
-        <section id="chart-section" class="bg-white rounded-lg shadow-md p-6 mb-8 hidden">
+        <section id="chart-section" class="bg-[var(--card)] border-2 border-[var(--border)] rounded shadow-md hover:shadow-none transition-all p-6 mb-8 hidden">
             <h2 class="text-xl font-semibold text-gray-800 mb-4">Portfolio Performance Over Time</h2>
             <div id="chart-loading" class="text-center py-8 text-gray-500">
                 <p>Add a purchase to see the chart</p>
@@ -217,21 +243,21 @@
         </section>
 
         <!-- Comparison Table -->
-        <section id="table-section" class="bg-white rounded-lg shadow-md p-6 mb-8">
+        <section id="table-section" class="bg-[var(--card)] border-2 border-[var(--border)] rounded shadow-md hover:shadow-none transition-all p-6 mb-8">
             <h2 class="text-xl font-semibold text-gray-800 mb-4">Detailed Comparison</h2>
             <div class="overflow-x-auto">
-                <table id="comparison-table" class="min-w-full divide-y divide-gray-200">
-                    <thead class="bg-gray-50">
+                <table id="comparison-table" class="min-w-full border-2 border-[var(--border)] shadow-lg">
+                    <thead class="bg-[var(--primary)] text-[var(--primary-foreground)]">
                         <tr>
-                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Stock</th>
-                            <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Invested</th>
-                            <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Current Value</th>
-                            <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Gain/Loss</th>
-                            <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Return %</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">Stock</th>
+                            <th class="px-6 py-3 text-right text-xs font-medium uppercase tracking-wider">Invested</th>
+                            <th class="px-6 py-3 text-right text-xs font-medium uppercase tracking-wider">Current Value</th>
+                            <th class="px-6 py-3 text-right text-xs font-medium uppercase tracking-wider">Gain/Loss</th>
+                            <th class="px-6 py-3 text-right text-xs font-medium uppercase tracking-wider">Return %</th>
                         </tr>
                     </thead>
                     <tbody id="comparison-tbody" class="bg-white divide-y divide-gray-200">
-                        <tr>
+                        <tr class="border-b border-[var(--border)] hover:bg-[var(--primary)]/10 transition-colors">
                             <td colspan="5" class="px-6 py-4 text-center text-gray-500">No purchases yet</td>
                         </tr>
                     </tbody>
@@ -240,7 +266,7 @@
         </section>
 
         <!-- Purchases List Skeleton -->
-        <section id="purchases-skeleton" class="bg-white rounded-lg shadow-md p-6 hidden">
+        <section id="purchases-skeleton" class="bg-[var(--card)] border-2 border-[var(--border)] rounded shadow-md hover:shadow-none transition-all p-6 hidden">
             <div class="h-6 bg-gray-200 rounded w-40 mb-4 animate-pulse"></div>
             <div class="space-y-2">
                 <div class="animate-pulse bg-gray-50 rounded-lg p-3">
@@ -283,7 +309,7 @@
         </section>
 
         <!-- Purchases List -->
-        <section id="purchases-section" class="bg-white rounded-lg shadow-md p-6 hidden">
+        <section id="purchases-section" class="bg-[var(--card)] border-2 border-[var(--border)] rounded shadow-md hover:shadow-none transition-all p-6 hidden">
             <h2 class="text-xl font-semibold text-gray-800 mb-4">Your Purchases</h2>
             <div id="purchases-list" class="space-y-2">
                 <p class="text-gray-500">No purchases yet</p>
@@ -302,18 +328,18 @@
             </button>
 
             <!-- Loading State -->
-            <div id="detail-loading" class="bg-white rounded-lg shadow-md p-6 text-center">
+            <div id="detail-loading" class="bg-[var(--card)] border-2 border-[var(--border)] rounded shadow-md hover:shadow-none transition-all p-6 text-center">
                 <p class="text-gray-500">Loading purchase details...</p>
             </div>
 
             <!-- Error State -->
-            <div id="detail-error" class="hidden bg-red-100 border border-red-400 text-red-700 rounded p-4 mb-4">
+            <div id="detail-error" class="hidden p-3 bg-red-100 border-2 border-[var(--destructive)] text-red-700 rounded mb-4">
             </div>
 
             <!-- Detail Content -->
             <div id="detail-content" class="hidden space-y-6">
                 <!-- Purchase Header -->
-                <div class="bg-white rounded-lg shadow-md p-6">
+                <div class="bg-[var(--card)] border-2 border-[var(--border)] rounded shadow-md hover:shadow-none transition-all p-6">
                     <h2 class="text-2xl font-bold text-gray-800">
                         <span id="detail-ticker"></span>
                         <span class="text-gray-500 text-lg font-normal ml-2">purchased on <span id="detail-date"></span></span>
@@ -340,7 +366,7 @@
                 </div>
 
                 <!-- "What If" Comparison Cards -->
-                <div class="bg-white rounded-lg shadow-md p-6">
+                <div class="bg-[var(--card)] border-2 border-[var(--border)] rounded shadow-md hover:shadow-none transition-all p-6">
                     <h3 class="text-xl font-semibold text-gray-800 mb-4">If you had bought instead...</h3>
                     <div id="detail-alternatives" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                         <!-- Alternative cards rendered here -->
@@ -348,25 +374,25 @@
                 </div>
 
                 <!-- Historical Chart -->
-                <div class="bg-white rounded-lg shadow-md p-6">
+                <div class="bg-[var(--card)] border-2 border-[var(--border)] rounded shadow-md hover:shadow-none transition-all p-6">
                     <h3 class="text-xl font-semibold text-gray-800 mb-4">Performance Over Time</h3>
                     <canvas id="detail-chart"></canvas>
                 </div>
 
                 <!-- Detailed Comparison Table -->
-                <div class="bg-white rounded-lg shadow-md p-6">
+                <div class="bg-[var(--card)] border-2 border-[var(--border)] rounded shadow-md hover:shadow-none transition-all p-6">
                     <h3 class="text-xl font-semibold text-gray-800 mb-4">Detailed Comparison</h3>
                     <div class="overflow-x-auto">
-                        <table class="min-w-full divide-y divide-gray-200">
-                            <thead class="bg-gray-50">
+                        <table class="min-w-full border-2 border-[var(--border)] shadow-lg">
+                            <thead class="bg-[var(--primary)] text-[var(--primary-foreground)]">
                                 <tr>
-                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Stock</th>
-                                    <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Price Then</th>
-                                    <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Shares</th>
-                                    <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Price Now</th>
-                                    <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Value Now</th>
-                                    <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Return</th>
-                                    <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">vs Your Pick</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">Stock</th>
+                                    <th class="px-6 py-3 text-right text-xs font-medium uppercase tracking-wider">Price Then</th>
+                                    <th class="px-6 py-3 text-right text-xs font-medium uppercase tracking-wider">Shares</th>
+                                    <th class="px-6 py-3 text-right text-xs font-medium uppercase tracking-wider">Price Now</th>
+                                    <th class="px-6 py-3 text-right text-xs font-medium uppercase tracking-wider">Value Now</th>
+                                    <th class="px-6 py-3 text-right text-xs font-medium uppercase tracking-wider">Return</th>
+                                    <th class="px-6 py-3 text-right text-xs font-medium uppercase tracking-wider">vs Your Pick</th>
                                 </tr>
                             </thead>
                             <tbody id="detail-comparison-tbody" class="divide-y divide-gray-200">
@@ -387,7 +413,7 @@
         <div class="fixed inset-0 bg-black/50 backdrop-blur-sm" id="modal-backdrop"></div>
         <!-- Modal Content -->
         <div class="fixed inset-0 flex items-center justify-center p-4">
-            <div class="bg-white rounded-lg shadow-xl max-w-md w-full p-6 relative" id="modal-content">
+            <div class="bg-[var(--card)] border-2 border-[var(--border)] rounded shadow-xl max-w-md w-full p-6 relative" id="modal-content">
                 <div class="flex items-start gap-4">
                     <div id="modal-icon" class="flex-shrink-0 w-10 h-10 rounded-full bg-red-100 flex items-center justify-center">
                         <svg class="w-6 h-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -400,10 +426,10 @@
                     </div>
                 </div>
                 <div class="mt-6 flex justify-end gap-3">
-                    <button id="modal-cancel" class="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-md transition-colors">
+                    <button id="modal-cancel" class="bg-[var(--muted)] text-[var(--foreground)] border-2 border-[var(--border)] px-4 py-2 rounded shadow-md hover:shadow-none hover:translate-y-0.5 transition-all">
                         Cancel
                     </button>
-                    <button id="modal-confirm" class="px-4 py-2 text-sm font-medium text-white bg-red-600 hover:bg-red-700 rounded-md transition-colors">
+                    <button id="modal-confirm" class="bg-[var(--destructive)] text-white border-2 border-[var(--border)] px-4 py-2 rounded shadow-md hover:shadow-none hover:translate-y-0.5 transition-all">
                         Delete
                     </button>
                 </div>
@@ -417,7 +443,7 @@
         <div class="fixed inset-0 bg-black/50 backdrop-blur-sm" onclick="closeShareModal()"></div>
         <!-- Modal Content -->
         <div class="fixed inset-0 flex items-center justify-center p-4">
-            <div class="bg-white rounded-lg shadow-xl max-w-lg w-full p-6 relative">
+            <div class="bg-[var(--card)] border-2 border-[var(--border)] rounded shadow-xl max-w-lg w-full p-6 relative">
                 <!-- Close Button -->
                 <button onclick="closeShareModal()" class="absolute top-4 right-4 text-gray-400 hover:text-gray-600">
                     <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -436,7 +462,7 @@
                 <div class="space-y-4">
                     <!-- Download PNG -->
                     <button onclick="downloadShareImage()"
-                            class="w-full flex items-center justify-center gap-2 bg-gray-800 text-white py-3 px-4 rounded-lg hover:bg-gray-900 transition-colors">
+                            class="w-full flex items-center justify-center gap-2 bg-gray-800 text-white border-2 border-[var(--border)] py-3 px-4 rounded shadow-md hover:shadow-none hover:translate-y-0.5 transition-all">
                         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/>
                         </svg>
@@ -446,10 +472,10 @@
                     <!-- Copy Link -->
                     <div class="flex gap-2">
                         <input type="text" id="share-url" readonly
-                               class="flex-1 px-3 py-2 border border-gray-300 rounded-lg bg-gray-50 text-gray-600 text-sm"
+                               class="flex-1 px-4 py-2 border-2 border-[var(--border)] rounded shadow-md focus:outline-none focus:shadow-sm transition-all bg-gray-50 text-gray-600 text-sm"
                                placeholder="Creating share link...">
                         <button onclick="copyShareLink()"
-                                class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-2">
+                                class="bg-[var(--primary)] text-[var(--primary-foreground)] border-2 border-[var(--border)] px-4 py-2 rounded shadow-md hover:shadow-none hover:translate-y-0.5 transition-all flex items-center gap-2">
                             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/>
                             </svg>

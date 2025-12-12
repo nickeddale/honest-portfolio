@@ -54,20 +54,20 @@ document.addEventListener('DOMContentLoaded', init);
 function switchTab(tab) {
     if (tab === 'quick-add') {
         // Update tab styles
-        tabQuickAdd.classList.add('text-blue-600', 'border-blue-600');
-        tabQuickAdd.classList.remove('text-gray-500', 'border-transparent');
-        tabDetailedEntry.classList.remove('text-blue-600', 'border-blue-600');
-        tabDetailedEntry.classList.add('text-gray-500', 'border-transparent');
+        tabQuickAdd.classList.add('text-[var(--primary)]', 'border-[var(--primary)]');
+        tabQuickAdd.classList.remove('text-[var(--muted-foreground)]', 'border-transparent');
+        tabDetailedEntry.classList.remove('text-[var(--primary)]', 'border-[var(--primary)]');
+        tabDetailedEntry.classList.add('text-[var(--muted-foreground)]', 'border-transparent');
 
         // Show/hide panels
         panelQuickAdd.classList.remove('hidden');
         panelDetailedEntry.classList.add('hidden');
     } else {
         // Update tab styles
-        tabDetailedEntry.classList.add('text-blue-600', 'border-blue-600');
-        tabDetailedEntry.classList.remove('text-gray-500', 'border-transparent');
-        tabQuickAdd.classList.remove('text-blue-600', 'border-blue-600');
-        tabQuickAdd.classList.add('text-gray-500', 'border-transparent');
+        tabDetailedEntry.classList.add('text-[var(--primary)]', 'border-[var(--primary)]');
+        tabDetailedEntry.classList.remove('text-[var(--muted-foreground)]', 'border-transparent');
+        tabQuickAdd.classList.remove('text-[var(--primary)]', 'border-[var(--primary)]');
+        tabQuickAdd.classList.add('text-[var(--muted-foreground)]', 'border-transparent');
 
         // Show/hide panels
         panelDetailedEntry.classList.remove('hidden');
@@ -369,26 +369,26 @@ async function deletePurchase(id) {
 
 function renderPurchasesList() {
     if (purchases.length === 0) {
-        purchasesList.innerHTML = '<p class="text-gray-500">No purchases yet</p>';
+        purchasesList.innerHTML = '<p class="text-[var(--muted-foreground)]">No purchases yet</p>';
         return;
     }
 
     purchasesList.innerHTML = purchases.map(p => `
-        <div class="flex items-center justify-between p-3 bg-gray-50 rounded-lg cursor-pointer hover:bg-gray-100 transition-colors"
+        <div class="flex items-center justify-between p-3 bg-[var(--card)] border-2 border-[var(--border)] rounded shadow-md hover:shadow-none cursor-pointer transition-all"
              onclick="navigateToPurchase(${p.id})">
             <div>
-                <span class="font-semibold text-gray-800">${p.ticker}</span>
-                <span class="text-gray-500 text-sm ml-2">${formatDate(p.purchase_date)}</span>
+                <span class="font-semibold text-[var(--card-foreground)]">${p.ticker}</span>
+                <span class="text-[var(--muted-foreground)] text-sm ml-2">${formatDate(p.purchase_date)}</span>
             </div>
             <div class="flex items-center gap-4">
-                <span class="text-gray-800">${formatCurrency(p.amount)}</span>
-                <span class="text-gray-500 text-sm">${p.shares_bought.toFixed(4)} shares @ ${formatCurrency(p.price_at_purchase)}</span>
-                <button onclick="event.stopPropagation(); deletePurchase(${p.id})" class="text-red-500 hover:text-red-700">
+                <span class="text-[var(--card-foreground)]">${formatCurrency(p.amount)}</span>
+                <span class="text-[var(--muted-foreground)] text-sm">${p.shares_bought.toFixed(4)} shares @ ${formatCurrency(p.price_at_purchase)}</span>
+                <button onclick="event.stopPropagation(); deletePurchase(${p.id})" class="p-1 border-2 border-[var(--border)] rounded shadow-md hover:shadow-none hover:translate-y-0.5 transition-all text-[var(--destructive)]">
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                     </svg>
                 </button>
-                <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg class="w-5 h-5 text-[var(--muted-foreground)]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
                 </svg>
             </div>
@@ -409,7 +409,7 @@ function renderSummaryCards() {
     document.getElementById('actual-return').textContent =
         `${actual.gain_loss >= 0 ? '+' : ''}${formatCurrency(actual.gain_loss)} (${actual.return_pct.toFixed(2)}%)`;
     document.getElementById('actual-return').className =
-        `text-sm ${actual.gain_loss >= 0 ? 'text-green-600' : 'text-red-600'}`;
+        `text-sm ${actual.gain_loss >= 0 ? 'text-[var(--success)]' : 'text-[var(--destructive)]'}`;
 
     // Best alternative
     if (alternatives.length > 0) {
@@ -421,7 +421,7 @@ function renderSummaryCards() {
         const oppCost = best.current_value - actual.current_value;
         document.getElementById('opportunity-cost').textContent = formatCurrency(Math.abs(oppCost));
         document.getElementById('opportunity-cost').className =
-            `text-2xl font-bold ${oppCost > 0 ? 'text-red-600' : 'text-green-600'}`;
+            `text-2xl font-bold ${oppCost > 0 ? 'text-[var(--destructive)]' : 'text-[var(--success)]'}`;
         document.getElementById('opportunity-cost-desc').textContent =
             oppCost > 0 ? `You could have earned more with ${best.ticker}` : 'Your picks are outperforming!';
     }
@@ -435,7 +435,7 @@ function renderSummaryCards() {
 
 function renderComparisonTable() {
     if (!portfolioSummary || portfolioSummary.actual.total_invested === 0) {
-        comparisonTbody.innerHTML = '<tr><td colspan="5" class="px-6 py-4 text-center text-gray-500">No purchases yet</td></tr>';
+        comparisonTbody.innerHTML = '<tr><td colspan="5" class="px-6 py-4 text-center text-[var(--muted-foreground)]">No purchases yet</td></tr>';
         return;
     }
 
@@ -456,20 +456,20 @@ function renderComparisonTable() {
     rows.sort((a, b) => b.current_value - a.current_value);
 
     comparisonTbody.innerHTML = rows.map((row, idx) => `
-        <tr class="${row.isActual ? 'bg-blue-50' : ''} ${idx === 0 ? 'ring-2 ring-green-500' : ''}">
+        <tr class="border-b border-[var(--border)] hover:bg-[var(--primary)]/10 transition-colors ${row.isActual ? 'bg-[var(--primary)]/5' : ''} ${idx === 0 ? 'ring-2 ring-[var(--success)]' : ''}">
             <td class="px-6 py-4 whitespace-nowrap">
                 <div class="flex items-center">
-                    ${idx === 0 ? '<span class="text-green-500 mr-2">👑</span>' : ''}
-                    <span class="font-medium ${row.isActual ? 'text-blue-700' : 'text-gray-900'}">${row.name || row.ticker}</span>
-                    ${row.isActual ? '<span class="ml-2 px-2 py-1 text-xs bg-blue-200 text-blue-800 rounded">You</span>' : ''}
+                    ${idx === 0 ? '<span class="text-[var(--success)] mr-2">👑</span>' : ''}
+                    <span class="font-medium ${row.isActual ? 'text-[var(--primary)]' : 'text-[var(--foreground)]'}">${row.name || row.ticker}</span>
+                    ${row.isActual ? '<span class="ml-2 px-2 py-1 text-xs border-2 border-[var(--border)] rounded bg-[var(--primary)]/10 text-[var(--primary)]">You</span>' : ''}
                 </div>
             </td>
-            <td class="px-6 py-4 whitespace-nowrap text-right text-gray-500">${formatCurrency(row.total_invested)}</td>
-            <td class="px-6 py-4 whitespace-nowrap text-right font-medium text-gray-900">${formatCurrency(row.current_value)}</td>
-            <td class="px-6 py-4 whitespace-nowrap text-right ${row.gain_loss >= 0 ? 'text-green-600' : 'text-red-600'}">
+            <td class="px-6 py-4 whitespace-nowrap text-right text-[var(--muted-foreground)]">${formatCurrency(row.total_invested)}</td>
+            <td class="px-6 py-4 whitespace-nowrap text-right font-medium text-[var(--foreground)]">${formatCurrency(row.current_value)}</td>
+            <td class="px-6 py-4 whitespace-nowrap text-right ${row.gain_loss >= 0 ? 'text-[var(--success)]' : 'text-[var(--destructive)]'}">
                 ${row.gain_loss >= 0 ? '+' : ''}${formatCurrency(row.gain_loss)}
             </td>
-            <td class="px-6 py-4 whitespace-nowrap text-right ${row.return_pct >= 0 ? 'text-green-600' : 'text-red-600'}">
+            <td class="px-6 py-4 whitespace-nowrap text-right ${row.return_pct >= 0 ? 'text-[var(--success)]' : 'text-[var(--destructive)]'}">
                 ${row.return_pct >= 0 ? '+' : ''}${row.return_pct.toFixed(2)}%
             </td>
         </tr>
@@ -595,14 +595,14 @@ function showToast(message, type = 'info', duration = 4000) {
     const container = document.getElementById('toast-container');
 
     const toast = document.createElement('div');
-    toast.className = `pointer-events-auto flex items-center gap-3 px-4 py-3 rounded-lg shadow-lg transform transition-all duration-300 translate-x-full opacity-0 max-w-sm`;
+    toast.className = `pointer-events-auto flex items-center gap-3 px-4 py-3 rounded shadow-md transform transition-all duration-300 translate-x-full opacity-0 max-w-sm`;
 
     // Type-specific styles
     const styles = {
-        success: { bg: 'bg-green-50 border border-green-200', icon: 'text-green-500', iconPath: 'M5 13l4 4L19 7' },
-        error: { bg: 'bg-red-50 border border-red-200', icon: 'text-red-500', iconPath: 'M6 18L18 6M6 6l12 12' },
-        warning: { bg: 'bg-yellow-50 border border-yellow-200', icon: 'text-yellow-500', iconPath: 'M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z' },
-        info: { bg: 'bg-blue-50 border border-blue-200', icon: 'text-blue-500', iconPath: 'M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z' }
+        success: { bg: 'bg-green-100 border-2 border-[var(--success)]', icon: 'text-green-600', iconPath: 'M5 13l4 4L19 7' },
+        error: { bg: 'bg-red-100 border-2 border-[var(--destructive)]', icon: 'text-red-600', iconPath: 'M6 18L18 6M6 6l12 12' },
+        warning: { bg: 'bg-yellow-100 border-2 border-yellow-600', icon: 'text-yellow-600', iconPath: 'M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z' },
+        info: { bg: 'bg-blue-100 border-2 border-[var(--primary)]', icon: 'text-blue-600', iconPath: 'M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z' }
     };
 
     const style = styles[type] || styles.info;
@@ -612,8 +612,8 @@ function showToast(message, type = 'info', duration = 4000) {
         <svg class="w-5 h-5 flex-shrink-0 ${style.icon}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="${style.iconPath}"/>
         </svg>
-        <span class="text-sm font-medium text-gray-800 flex-1">${message}</span>
-        <button class="text-gray-400 hover:text-gray-600 flex-shrink-0" onclick="this.parentElement.remove()">
+        <span class="text-sm font-medium text-[var(--foreground)] flex-1">${message}</span>
+        <button class="text-[var(--muted-foreground)] hover:text-[var(--foreground)] flex-shrink-0" onclick="this.parentElement.remove()">
             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
             </svg>
@@ -655,17 +655,17 @@ function showConfirmation({ title = 'Confirm Action', message = 'Are you sure?',
 
         // Apply type-specific styling
         if (type === 'danger') {
-            modalIcon.className = 'flex-shrink-0 w-10 h-10 rounded-full bg-red-100 flex items-center justify-center';
+            modalIcon.className = 'flex-shrink-0 w-10 h-10 rounded-full bg-red-100 border-2 border-[var(--destructive)] flex items-center justify-center';
             modalIcon.innerHTML = `<svg class="w-6 h-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
             </svg>`;
-            modalConfirm.className = 'px-4 py-2 text-sm font-medium text-white bg-red-600 hover:bg-red-700 rounded-md transition-colors';
+            modalConfirm.className = 'px-4 py-2 text-sm font-medium text-white bg-[var(--destructive)] border-2 border-[var(--border)] rounded shadow-md hover:shadow-none hover:translate-y-0.5 transition-all';
         } else {
-            modalIcon.className = 'flex-shrink-0 w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center';
+            modalIcon.className = 'flex-shrink-0 w-10 h-10 rounded-full bg-blue-100 border-2 border-[var(--primary)] flex items-center justify-center';
             modalIcon.innerHTML = `<svg class="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
             </svg>`;
-            modalConfirm.className = 'px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-md transition-colors';
+            modalConfirm.className = 'px-4 py-2 text-sm font-medium text-white bg-[var(--primary)] border-2 border-[var(--border)] rounded shadow-md hover:shadow-none hover:translate-y-0.5 transition-all';
         }
 
         modal.classList.remove('hidden');
@@ -837,7 +837,7 @@ function renderPurchaseDetail() {
     document.getElementById('detail-price-at-purchase').textContent = formatCurrency(purchase.price_at_purchase);
     document.getElementById('detail-current-value').textContent = formatCurrency(actual.current_value);
 
-    const returnClass = actual.gain_loss >= 0 ? 'text-green-600' : 'text-red-600';
+    const returnClass = actual.gain_loss >= 0 ? 'text-[var(--success)]' : 'text-[var(--destructive)]';
     document.getElementById('detail-return').className = `text-sm ${returnClass}`;
     document.getElementById('detail-return').textContent =
         `${actual.gain_loss >= 0 ? '+' : ''}${formatCurrency(actual.gain_loss)} (${actual.return_pct.toFixed(2)}%)`;
@@ -857,24 +857,24 @@ function renderAlternativeCards(alternatives, actual) {
 
     container.innerHTML = alternatives.map(alt => {
         const diff = alt.current_value - actual.current_value;
-        const diffClass = diff > 0 ? 'text-red-600' : 'text-green-600';
-        const borderClass = diff > 0 ? 'border-red-200 bg-red-50' : 'border-green-200 bg-green-50';
+        const diffClass = diff > 0 ? 'text-[var(--destructive)]' : 'text-[var(--success)]';
+        const borderClass = diff > 0 ? 'border-2 border-[var(--destructive)] bg-red-50' : 'border-2 border-[var(--success)] bg-green-50';
         const diffText = diff > 0
             ? `You missed out on ${formatCurrency(diff)}`
             : `You're ahead by ${formatCurrency(Math.abs(diff))}`;
 
         return `
-            <div class="border rounded-lg p-4 ${borderClass}">
+            <div class="${borderClass} rounded shadow-md p-4 transition-all hover:shadow-none">
                 <div class="flex justify-between items-start mb-2">
                     <div>
-                        <span class="font-semibold text-gray-800">${alt.ticker}</span>
-                        <span class="text-gray-500 text-sm block">${alt.name}</span>
+                        <span class="font-semibold text-[var(--foreground)]">${alt.ticker}</span>
+                        <span class="text-[var(--muted-foreground)] text-sm block">${alt.name}</span>
                     </div>
-                    <span class="text-lg font-bold ${alt.return_pct >= 0 ? 'text-green-600' : 'text-red-600'}">
+                    <span class="text-lg font-bold ${alt.return_pct >= 0 ? 'text-[var(--success)]' : 'text-[var(--destructive)]'}">
                         ${alt.return_pct >= 0 ? '+' : ''}${alt.return_pct.toFixed(2)}%
                     </span>
                 </div>
-                <p class="text-gray-600 text-sm">
+                <p class="text-[var(--muted-foreground)] text-sm">
                     Would be worth <span class="font-semibold">${formatCurrency(alt.current_value)}</span>
                 </p>
                 <p class="${diffClass} text-sm font-medium mt-1">${diffText}</p>
@@ -916,22 +916,22 @@ function renderDetailComparisonTable(purchase, actual, alternatives) {
     rows.sort((a, b) => b.current_value - a.current_value);
 
     tbody.innerHTML = rows.map((row, idx) => `
-        <tr class="${row.isActual ? 'bg-blue-50' : ''} ${idx === 0 ? 'ring-2 ring-green-500' : ''}">
+        <tr class="border-b border-[var(--border)] hover:bg-[var(--primary)]/10 transition-colors ${row.isActual ? 'bg-[var(--primary)]/5' : ''} ${idx === 0 ? 'ring-2 ring-[var(--success)]' : ''}">
             <td class="px-6 py-4 whitespace-nowrap">
                 <div class="flex items-center">
-                    ${idx === 0 ? '<span class="text-green-500 mr-2">👑</span>' : ''}
-                    <span class="font-medium ${row.isActual ? 'text-blue-700' : 'text-gray-900'}">${row.isActual ? row.name : row.name || row.ticker}</span>
-                    ${row.isActual ? '<span class="ml-2 px-2 py-1 text-xs bg-blue-200 text-blue-800 rounded">You</span>' : ''}
+                    ${idx === 0 ? '<span class="text-[var(--success)] mr-2">👑</span>' : ''}
+                    <span class="font-medium ${row.isActual ? 'text-[var(--primary)]' : 'text-[var(--foreground)]'}">${row.isActual ? row.name : row.name || row.ticker}</span>
+                    ${row.isActual ? '<span class="ml-2 px-2 py-1 text-xs border-2 border-[var(--border)] rounded bg-[var(--primary)]/10 text-[var(--primary)]">You</span>' : ''}
                 </div>
             </td>
-            <td class="px-6 py-4 text-right text-gray-500">${formatCurrency(row.price_at_purchase)}</td>
-            <td class="px-6 py-4 text-right text-gray-500">${row.shares.toFixed(4)}</td>
-            <td class="px-6 py-4 text-right text-gray-500">${formatCurrency(row.current_price)}</td>
-            <td class="px-6 py-4 text-right font-medium">${formatCurrency(row.current_value)}</td>
-            <td class="px-6 py-4 text-right ${row.return_pct >= 0 ? 'text-green-600' : 'text-red-600'}">
+            <td class="px-6 py-4 text-right text-[var(--muted-foreground)]">${formatCurrency(row.price_at_purchase)}</td>
+            <td class="px-6 py-4 text-right text-[var(--muted-foreground)]">${row.shares.toFixed(4)}</td>
+            <td class="px-6 py-4 text-right text-[var(--muted-foreground)]">${formatCurrency(row.current_price)}</td>
+            <td class="px-6 py-4 text-right font-medium text-[var(--foreground)]">${formatCurrency(row.current_value)}</td>
+            <td class="px-6 py-4 text-right ${row.return_pct >= 0 ? 'text-[var(--success)]' : 'text-[var(--destructive)]'}">
                 ${row.return_pct >= 0 ? '+' : ''}${row.return_pct.toFixed(2)}%
             </td>
-            <td class="px-6 py-4 text-right ${row.difference > 0 ? 'text-red-600' : row.difference < 0 ? 'text-green-600' : 'text-gray-500'}">
+            <td class="px-6 py-4 text-right ${row.difference > 0 ? 'text-[var(--destructive)]' : row.difference < 0 ? 'text-[var(--success)]' : 'text-[var(--muted-foreground)]'}">
                 ${row.isActual ? '-' : (row.difference > 0 ? '+' : '') + formatCurrency(row.difference)}
             </td>
         </tr>
@@ -1139,10 +1139,10 @@ function renderSharePreview() {
     const oppCostClass = opportunityCost > 0 ? 'text-red-600' : 'text-green-600';
 
     sharePreview.innerHTML = `
-        <div class="bg-gradient-to-br from-blue-500 to-purple-600 p-6 rounded-lg shadow-lg text-white">
+        <div class="bg-gradient-to-br from-blue-500 to-purple-600 p-6 border-2 border-[var(--border)] rounded shadow-md text-white">
             <h3 class="text-2xl font-bold mb-4">My Portfolio Performance</h3>
 
-            <div class="bg-white/10 backdrop-blur-sm rounded-lg p-4 mb-4">
+            <div class="bg-white/10 backdrop-blur-sm border-2 border-white/30 rounded shadow-sm p-4 mb-4">
                 <div class="text-sm text-blue-100 mb-1">Your Return</div>
                 <div class="text-3xl font-bold ${actual.return_pct >= 0 ? 'text-green-300' : 'text-red-300'}">
                     ${actual.return_pct >= 0 ? '+' : ''}${actual.return_pct.toFixed(2)}%
@@ -1150,7 +1150,7 @@ function renderSharePreview() {
             </div>
 
             <div class="grid grid-cols-2 gap-3 mb-4">
-                <div class="bg-white/10 backdrop-blur-sm rounded-lg p-3">
+                <div class="bg-white/10 backdrop-blur-sm border-2 border-white/30 rounded shadow-sm p-3">
                     <div class="text-xs text-blue-100 mb-1">Best Benchmark</div>
                     <div class="font-semibold">${best.ticker}</div>
                     <div class="text-sm ${best.return_pct >= 0 ? 'text-green-300' : 'text-red-300'}">
@@ -1158,7 +1158,7 @@ function renderSharePreview() {
                     </div>
                 </div>
 
-                <div class="bg-white/10 backdrop-blur-sm rounded-lg p-3">
+                <div class="bg-white/10 backdrop-blur-sm border-2 border-white/30 rounded shadow-sm p-3">
                     <div class="text-xs text-blue-100 mb-1">Worst Benchmark</div>
                     <div class="font-semibold">${worst.ticker}</div>
                     <div class="text-sm ${worst.return_pct >= 0 ? 'text-green-300' : 'text-red-300'}">
@@ -1167,7 +1167,7 @@ function renderSharePreview() {
                 </div>
             </div>
 
-            <div class="bg-white/10 backdrop-blur-sm rounded-lg p-3">
+            <div class="bg-white/10 backdrop-blur-sm border-2 border-white/30 rounded shadow-sm p-3">
                 <div class="text-xs text-blue-100 mb-1">Opportunity Cost</div>
                 <div class="text-xl font-bold ${opportunityCost > 0 ? 'text-red-300' : 'text-green-300'}">
                     ${opportunityCost > 0 ? '-' : '+'}${formatCurrency(Math.abs(opportunityCost))}

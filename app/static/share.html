@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="description" content="See how this portfolio compares to market benchmarks">
-    <meta name="theme-color" content="#1e40af">
+    <meta name="theme-color" content="#3b82f6">
     <title>Portfolio Summary | Honest Portfolio</title>
 
     <!-- Open Graph meta tags (will be populated by JS) -->
@@ -16,68 +16,98 @@
     <!-- Favicon -->
     <link rel="icon" href="/static/favicon.ico" type="image/x-icon">
 
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Archivo+Black&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
+
+    <!-- RetroUI CSS Variables -->
+    <style>
+        :root {
+            --font-head: 'Archivo Black', sans-serif;
+            --font-sans: 'Space Grotesk', sans-serif;
+            --background: #f5f5f4;
+            --foreground: #1c1917;
+            --card: #ffffff;
+            --primary: #3b82f6;
+            --primary-foreground: #ffffff;
+            --secondary: #fde047;
+            --border: #1c1917;
+            --muted: #e7e5e4;
+            --muted-foreground: #78716c;
+            --destructive: #ef4444;
+            --success: #22c55e;
+        }
+        body {
+            font-family: var(--font-sans);
+        }
+        h1, h2, h3, h4 {
+            font-family: var(--font-head);
+        }
+    </style>
 </head>
-<body class="bg-gray-100 min-h-screen flex flex-col">
+<body class="bg-[var(--background)] min-h-screen flex flex-col">
     <div class="flex-1 flex items-center justify-center p-4 py-12">
         <div class="w-full max-w-2xl">
             <!-- Loading State -->
-            <div id="loading-state" class="bg-white rounded-lg shadow-md p-12 text-center">
-                <div class="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mb-4"></div>
-                <p class="text-gray-600">Loading portfolio summary...</p>
+            <div id="loading-state" class="bg-[var(--card)] border-2 border-[var(--border)] rounded shadow-md p-12 text-center">
+                <div class="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-[var(--primary)] mb-4"></div>
+                <p class="text-[var(--muted-foreground)]">Loading portfolio summary...</p>
             </div>
 
             <!-- Error State -->
-            <div id="error-state" class="hidden bg-white rounded-lg shadow-md p-12 text-center">
-                <svg class="mx-auto h-16 w-16 text-red-500 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <div id="error-state" class="hidden bg-[var(--card)] border-2 border-[var(--border)] rounded shadow-md p-12 text-center">
+                <svg class="mx-auto h-16 w-16 text-[var(--destructive)] mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
                 </svg>
-                <h2 class="text-2xl font-bold text-gray-800 mb-2">Share Not Found</h2>
-                <p class="text-gray-600 mb-6">This portfolio summary could not be found or may have been deleted.</p>
-                <a href="/" class="inline-block bg-blue-600 text-white px-6 py-3 rounded-md hover:bg-blue-700 transition-colors">
+                <h2 class="text-2xl font-bold text-[var(--foreground)] mb-2">Share Not Found</h2>
+                <p class="text-[var(--muted-foreground)] mb-6">This portfolio summary could not be found or may have been deleted.</p>
+                <a href="/" class="inline-block bg-[var(--primary)] text-[var(--primary-foreground)] px-6 py-3 border-2 border-[var(--border)] rounded shadow-md hover:shadow-none hover:translate-y-0.5 active:translate-y-1 transition-all">
                     Go to Honest Portfolio
                 </a>
             </div>
 
             <!-- Share Card -->
-            <div id="share-card" class="hidden bg-white rounded-lg shadow-md overflow-hidden">
+            <div id="share-card" class="hidden bg-[var(--card)] border-2 border-[var(--border)] rounded shadow-md hover:shadow-none transition-all overflow-hidden">
                 <!-- Card Header -->
-                <div class="bg-gradient-to-r from-blue-600 to-blue-700 px-8 py-6">
-                    <p class="text-blue-100 text-sm font-medium tracking-wider uppercase">Honest Portfolio</p>
-                    <h1 class="text-white text-2xl font-bold mt-1">Portfolio Performance Summary</h1>
+                <div class="bg-[var(--primary)] border-b-2 border-[var(--border)] px-8 py-6">
+                    <p class="text-[var(--primary-foreground)] opacity-90 text-sm font-medium tracking-wider uppercase">Honest Portfolio</p>
+                    <h1 class="text-[var(--primary-foreground)] text-2xl font-bold mt-1">Portfolio Performance Summary</h1>
                 </div>
 
                 <!-- Card Body -->
                 <div class="p-8">
                     <!-- Your Return Section -->
-                    <div class="text-center mb-8 pb-8 border-b border-gray-200">
-                        <p class="text-gray-500 text-sm font-medium uppercase tracking-wider mb-3">Your Return</p>
+                    <div class="text-center mb-8 pb-8 border-b-2 border-[var(--border)]">
+                        <p class="text-[var(--muted-foreground)] text-sm font-medium uppercase tracking-wider mb-3">Your Return</p>
                         <p id="portfolio-return" class="text-5xl font-bold mb-2">+0.0%</p>
                     </div>
 
                     <!-- Benchmarks Section -->
-                    <div class="grid grid-cols-2 gap-6 mb-8 pb-8 border-b border-gray-200">
+                    <div class="grid grid-cols-2 gap-6 mb-8 pb-8 border-b-2 border-[var(--border)]">
                         <!-- Best Benchmark -->
                         <div class="text-center">
-                            <p class="text-gray-500 text-xs font-medium uppercase tracking-wider mb-2">Best Benchmark</p>
-                            <p id="best-ticker" class="text-xl font-bold text-gray-800 mb-1">SPY</p>
+                            <p class="text-[var(--muted-foreground)] text-xs font-medium uppercase tracking-wider mb-2">Best Benchmark</p>
+                            <p id="best-ticker" class="text-xl font-bold text-[var(--foreground)] mb-1">SPY</p>
                             <p id="best-return" class="text-2xl font-semibold">+0.0%</p>
                         </div>
 
                         <!-- Worst Benchmark -->
                         <div class="text-center">
-                            <p class="text-gray-500 text-xs font-medium uppercase tracking-wider mb-2">Worst Benchmark</p>
-                            <p id="worst-ticker" class="text-xl font-bold text-gray-800 mb-1">SPY</p>
+                            <p class="text-[var(--muted-foreground)] text-xs font-medium uppercase tracking-wider mb-2">Worst Benchmark</p>
+                            <p id="worst-ticker" class="text-xl font-bold text-[var(--foreground)] mb-1">SPY</p>
                             <p id="worst-return" class="text-2xl font-semibold">+0.0%</p>
                         </div>
                     </div>
 
                     <!-- Opportunity Cost Section -->
                     <div class="text-center">
-                        <p class="text-gray-500 text-sm font-medium uppercase tracking-wider mb-3">Opportunity Cost</p>
+                        <p class="text-[var(--muted-foreground)] text-sm font-medium uppercase tracking-wider mb-3">Opportunity Cost</p>
                         <p id="opportunity-cost" class="text-3xl font-bold mb-1">+0.0%</p>
-                        <p class="text-gray-600 text-sm">vs <span id="opp-cost-vs">best benchmark</span></p>
+                        <p class="text-[var(--muted-foreground)] text-sm">vs <span id="opp-cost-vs">best benchmark</span></p>
                     </div>
                 </div>
             </div>
@@ -85,11 +115,11 @@
     </div>
 
     <!-- Footer CTA -->
-    <footer class="bg-white border-t border-gray-200 py-8">
+    <footer class="bg-[var(--card)] border-t-2 border-[var(--border)] py-8">
         <div class="container mx-auto px-4 text-center">
-            <h3 class="text-xl font-semibold text-gray-800 mb-2">Want to track your own portfolio?</h3>
-            <p class="text-gray-600 mb-4">See how your stock picks compare to market benchmarks in real-time.</p>
-            <a href="/" class="inline-block bg-blue-600 text-white px-8 py-3 rounded-md hover:bg-blue-700 transition-colors font-medium">
+            <h3 class="text-xl font-semibold text-[var(--foreground)] mb-2">Want to track your own portfolio?</h3>
+            <p class="text-[var(--muted-foreground)] mb-4">See how your stock picks compare to market benchmarks in real-time.</p>
+            <a href="/" class="inline-block bg-[var(--primary)] text-[var(--primary-foreground)] px-8 py-3 border-2 border-[var(--border)] rounded shadow-md hover:shadow-none hover:translate-y-0.5 active:translate-y-1 transition-all font-medium">
                 Get Started Free
             </a>
         </div>
