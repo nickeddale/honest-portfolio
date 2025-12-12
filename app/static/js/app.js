@@ -91,12 +91,10 @@ async function init() {
     // Initialize auth manager and check login status
     await authManager.init();
 
-    if (!authManager.isAuthenticated()) {
-        window.location.href = '/login.html';
-        return;
-    }
+    // Store auth state for guest mode support
+    const isGuest = !authManager.isAuthenticated();
 
-    // Update user UI
+    // Update user UI (handles both guest and authenticated states)
     updateUserUI();
 
     // Show loading state
@@ -137,16 +135,31 @@ async function init() {
 
 function updateUserUI() {
     const user = authManager.getCurrentUser();
-    if (!user) return;
-
     const userSection = document.getElementById('user-section');
-    const userName = document.getElementById('user-name');
-    const userInitials = document.getElementById('user-initials');
-    const userPicture = document.getElementById('user-picture');
+    const guestLoginSection = document.getElementById('guest-login-section');
 
+    if (!user) {
+        // Guest mode
+        if (userSection) {
+            userSection.classList.add('hidden');
+        }
+        if (guestLoginSection) {
+            guestLoginSection.classList.remove('hidden');
+        }
+        return;
+    }
+
+    // Authenticated mode
     if (userSection) {
         userSection.classList.remove('hidden');
     }
+    if (guestLoginSection) {
+        guestLoginSection.classList.add('hidden');
+    }
+
+    const userName = document.getElementById('user-name');
+    const userInitials = document.getElementById('user-initials');
+    const userPicture = document.getElementById('user-picture');
 
     if (userName) {
         userName.textContent = user.name;
@@ -191,6 +204,13 @@ async function loadData() {
 
 async function loadPurchases() {
     try {
+        // Guest mode: load from localStorage
+        if (!authManager.isAuthenticated()) {
+            purchases = guestManager.getGuestPurchases();
+            return;
+        }
+
+        // Authenticated mode: load from API
         const response = await authManager.authFetch(`${API_BASE}/purchases`);
         if (!response.ok) throw new Error('Failed to load purchases');
         purchases = await response.json();
@@ -203,6 +223,23 @@ async function loadPurchases() {
 
 async function loadPortfolioSummary() {
     try {
+        // Guest mode: POST purchases to guest endpoint
+        if (!authManager.isAuthenticated()) {
+            const response = await fetch(`${API_BASE}/guest/portfolio/summary`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    purchases: guestManager.getGuestPurchases()
+                })
+            });
+            if (!response.ok) throw new Error('Failed to load portfolio summary');
+            portfolioSummary = await response.json();
+            return;
+        }
+
+        // Authenticated mode: load from API
         const response = await authManager.authFetch(`${API_BASE}/portfolio/summary`);
         if (!response.ok) throw new Error('Failed to load portfolio summary');
         portfolioSummary = await response.json();
@@ -215,6 +252,23 @@ async function loadPortfolioSummary() {
 
 async function loadPortfolioHistory() {
     try {
+        // Guest mode: POST purchases to guest endpoint
+        if (!authManager.isAuthenticated()) {
+            const response = await fetch(`${API_BASE}/guest/portfolio/history`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    purchases: guestManager.getGuestPurchases()
+                })
+            });
+            if (!response.ok) throw new Error('Failed to load portfolio history');
+            portfolioHistory = await response.json();
+            return;
+        }
+
+        // Authenticated mode: load from API
         const response = await authManager.authFetch(`${API_BASE}/portfolio/history`);
         if (!response.ok) throw new Error('Failed to load portfolio history');
         portfolioHistory = await response.json();
@@ -280,21 +334,51 @@ async function handleQuickAddSubmit(e) {
     };
 
     try {
-        const response = await authManager.authFetch(`${API_BASE}/purchases`, {
-            method: 'POST',
-            body: JSON.stringify(data)
-        });
+        // Guest mode: validate and save to localStorage
+        if (!authManager.isAuthenticated()) {
+            const response = await fetch(`${API_BASE}/guest/purchases/validate`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(data)
+            });
 
-        const result = await response.json();
+            const result = await response.json();
 
-        if (!response.ok) {
-            showError(result.error || 'Failed to add purchase');
-            return;
+            if (!response.ok) {
+                showError(result.error || 'Failed to add purchase');
+                return;
+            }
+
+            // Save to localStorage
+            guestManager.addGuestPurchase(result);
+
+            showSuccess(`Added $${data.amount.toFixed(2)} investment in ${data.ticker}`);
+            purchaseFormQuick.reset();
+
+            // Show signup prompt if needed
+            showGuestSignupPrompt();
+
+            await loadData();
+        } else {
+            // Authenticated mode: use existing API
+            const response = await authManager.authFetch(`${API_BASE}/purchases`, {
+                method: 'POST',
+                body: JSON.stringify(data)
+            });
+
+            const result = await response.json();
+
+            if (!response.ok) {
+                showError(result.error || 'Failed to add purchase');
+                return;
+            }
+
+            showSuccess(`Added $${data.amount.toFixed(2)} investment in ${data.ticker}`);
+            purchaseFormQuick.reset();
+            await loadData();
         }
-
-        showSuccess(`Added $${data.amount.toFixed(2)} investment in ${data.ticker}`);
-        purchaseFormQuick.reset();
-        await loadData();
     } catch (error) {
         showError('Network error. Please try again.');
     } finally {
@@ -322,23 +406,55 @@ async function handleDetailedEntrySubmit(e) {
     };
 
     try {
-        const response = await authManager.authFetch(`${API_BASE}/purchases`, {
-            method: 'POST',
-            body: JSON.stringify(data)
-        });
+        // Guest mode: validate and save to localStorage
+        if (!authManager.isAuthenticated()) {
+            const response = await fetch(`${API_BASE}/guest/purchases/validate`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(data)
+            });
 
-        const result = await response.json();
+            const result = await response.json();
 
-        if (!response.ok) {
-            showError(result.error || 'Failed to add purchase');
-            return;
+            if (!response.ok) {
+                showError(result.error || 'Failed to add purchase');
+                return;
+            }
+
+            // Save to localStorage
+            guestManager.addGuestPurchase(result);
+
+            const amount = quantity * pricePerShare;
+            showSuccess(`Added ${quantity.toFixed(4)} shares of ${data.ticker} at ${formatCurrency(pricePerShare)} per share`);
+            purchaseFormDetailed.reset();
+            calculatedAmountSpan.textContent = '$0.00';
+
+            // Show signup prompt if needed
+            showGuestSignupPrompt();
+
+            await loadData();
+        } else {
+            // Authenticated mode: use existing API
+            const response = await authManager.authFetch(`${API_BASE}/purchases`, {
+                method: 'POST',
+                body: JSON.stringify(data)
+            });
+
+            const result = await response.json();
+
+            if (!response.ok) {
+                showError(result.error || 'Failed to add purchase');
+                return;
+            }
+
+            const amount = quantity * pricePerShare;
+            showSuccess(`Added ${quantity.toFixed(4)} shares of ${data.ticker} at ${formatCurrency(pricePerShare)} per share`);
+            purchaseFormDetailed.reset();
+            calculatedAmountSpan.textContent = '$0.00';
+            await loadData();
         }
-
-        const amount = quantity * pricePerShare;
-        showSuccess(`Added ${quantity.toFixed(4)} shares of ${data.ticker} at ${formatCurrency(pricePerShare)} per share`);
-        purchaseFormDetailed.reset();
-        calculatedAmountSpan.textContent = '$0.00';
-        await loadData();
     } catch (error) {
         showError('Network error. Please try again.');
     } finally {
@@ -359,9 +475,17 @@ async function deletePurchase(id) {
     if (!confirmed) return;
 
     try {
-        await authManager.authFetch(`${API_BASE}/purchases/${id}`, { method: 'DELETE' });
-        showToast('Purchase deleted successfully', 'success');
-        await loadData();
+        // Guest mode: check if it's a guest purchase
+        if (String(id).startsWith('guest_')) {
+            guestManager.deleteGuestPurchase(id);
+            showToast('Purchase deleted successfully', 'success');
+            await loadData();
+        } else {
+            // Authenticated mode: use API
+            await authManager.authFetch(`${API_BASE}/purchases/${id}`, { method: 'DELETE' });
+            showToast('Purchase deleted successfully', 'success');
+            await loadData();
+        }
     } catch (error) {
         showToast('Failed to delete purchase', 'error');
     }
@@ -719,6 +843,24 @@ function showSuccess(message) {
 function hideMessages() {
     formError.classList.add('hidden');
     formSuccess.classList.add('hidden');
+}
+
+// Guest signup prompt functions
+function showGuestSignupPrompt() {
+    if (!guestManager.shouldShowPrompt()) return;
+
+    const prompt = document.getElementById('guest-signup-prompt');
+    if (prompt) {
+        prompt.classList.remove('hidden');
+    }
+}
+
+function dismissGuestPrompt() {
+    guestManager.dismissPrompt();
+    const prompt = document.getElementById('guest-signup-prompt');
+    if (prompt) {
+        prompt.classList.add('hidden');
+    }
 }
 
 // Router functions

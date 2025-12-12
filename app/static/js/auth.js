@@ -8,10 +8,66 @@ class AuthManager {
 
     /**
      * Initialize the auth manager - check if user is logged in
+     * If user is authenticated and has guest purchases, migrate them
      */
     async init() {
         await this.refreshCurrentUser();
         await this.fetchCsrfToken();
+
+        // If user is authenticated and has guest purchases, migrate them
+        if (this.isAuthenticated() && typeof guestManager !== 'undefined' && guestManager.hasGuestPurchases()) {
+            await this.migrateGuestPurchases();
+        }
+    }
+
+    /**
+     * Migrate guest purchases from localStorage to user's account
+     */
+    async migrateGuestPurchases() {
+        try {
+            const guestPurchases = guestManager.getGuestPurchases();
+            if (guestPurchases.length === 0) return;
+
+            const response = await this.authFetch('/api/guest/migrate', {
+                method: 'POST',
+                body: JSON.stringify({ purchases: guestPurchases })
+            });
+
+            if (response.ok) {
+                const result = await response.json();
+                // Clear localStorage after successful migration
+                guestManager.clearGuestPurchases();
+
+                // Show success message
+                if (result.migrated > 0) {
+                    this._showMigrationToast(result.migrated);
+                }
+            } else {
+                console.error('Failed to migrate guest purchases');
+            }
+        } catch (error) {
+            console.error('Error migrating guest purchases:', error);
+        }
+    }
+
+    /**
+     * Show toast notification for successful migration
+     */
+    _showMigrationToast(count) {
+        // Use the existing toast system if available, otherwise create a simple one
+        const message = `${count} purchase${count > 1 ? 's' : ''} synced to your account`;
+
+        // Try to use existing showToast function if it exists
+        if (typeof showToast === 'function') {
+            showToast(message, 'success');
+        } else {
+            // Fallback: create a simple toast
+            const toast = document.createElement('div');
+            toast.className = 'fixed bottom-4 right-4 bg-green-500 text-white px-4 py-2 rounded-lg shadow-lg z-50';
+            toast.textContent = message;
+            document.body.appendChild(toast);
+            setTimeout(() => toast.remove(), 5000);
+        }
     }
 
     /**

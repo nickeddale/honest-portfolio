@@ -52,6 +52,7 @@ def create_app():
     from app.routes.auth import auth_bp
     from app.routes.test_auth import test_auth_bp
     from app.routes.share import share_bp
+    from app.routes.guest import guest_bp
 
     app.register_blueprint(purchases_bp, url_prefix='/api')
     app.register_blueprint(portfolio_bp, url_prefix='/api')
@@ -59,11 +60,13 @@ def create_app():
     app.register_blueprint(auth_bp, url_prefix='/api')
     app.register_blueprint(test_auth_bp, url_prefix='/api')
     app.register_blueprint(share_bp, url_prefix='/api')
+    app.register_blueprint(guest_bp, url_prefix='/api')
 
     # Exempt certain routes from CSRF
     csrf.exempt(auth_bp)  # OAuth callbacks need to be exempt
     csrf.exempt(test_auth_bp)  # Test endpoints exempt for ease of testing
     csrf.exempt(share_bp)  # Public GET endpoints need to be exempt
+    csrf.exempt(guest_bp)  # Guest endpoints are public (except migrate which uses session)
 
     # Serve the SPA
     @app.route('/')
