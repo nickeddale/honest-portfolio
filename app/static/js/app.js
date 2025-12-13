@@ -13,6 +13,14 @@ let currentPurchaseId = null;
 let purchaseDetail = null;
 let detailChart = null;
 
+// Security: HTML escaping utility to prevent XSS
+function escapeHtml(str) {
+    if (str === null || str === undefined) return '';
+    const div = document.createElement('div');
+    div.textContent = String(str);
+    return div.innerHTML;
+}
+
 // DOM Elements
 // Form elements - Quick Add
 const purchaseFormQuick = document.getElementById('purchase-form-quick');
@@ -501,7 +509,7 @@ function renderPurchasesList() {
         <div class="flex items-center justify-between p-3 bg-[var(--card)] border-2 border-[var(--border)] rounded shadow-md hover:shadow-none cursor-pointer transition-all"
              onclick="navigateToPurchase(${p.id})">
             <div>
-                <span class="font-semibold text-[var(--card-foreground)]">${p.ticker}</span>
+                <span class="font-semibold text-[var(--card-foreground)]">${escapeHtml(p.ticker)}</span>
                 <span class="text-[var(--muted-foreground)] text-sm ml-2">${formatDate(p.purchase_date)}</span>
             </div>
             <div class="flex items-center gap-4">
@@ -584,7 +592,7 @@ function renderComparisonTable() {
             <td class="px-6 py-4 whitespace-nowrap">
                 <div class="flex items-center">
                     ${idx === 0 ? '<span class="text-[var(--success)] mr-2">👑</span>' : ''}
-                    <span class="font-medium ${row.isActual ? 'text-[var(--primary)]' : 'text-[var(--foreground)]'}">${row.name || row.ticker}</span>
+                    <span class="font-medium ${row.isActual ? 'text-[var(--primary)]' : 'text-[var(--foreground)]'}">${escapeHtml(row.name || row.ticker)}</span>
                     ${row.isActual ? '<span class="ml-2 px-2 py-1 text-xs border-2 border-[var(--border)] rounded bg-[var(--primary)]/10 text-[var(--primary)]">You</span>' : ''}
                 </div>
             </td>
@@ -736,7 +744,7 @@ function showToast(message, type = 'info', duration = 4000) {
         <svg class="w-5 h-5 flex-shrink-0 ${style.icon}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="${style.iconPath}"/>
         </svg>
-        <span class="text-sm font-medium text-[var(--foreground)] flex-1">${message}</span>
+        <span class="text-sm font-medium text-[var(--foreground)] flex-1">${escapeHtml(message)}</span>
         <button class="text-[var(--muted-foreground)] hover:text-[var(--foreground)] flex-shrink-0" onclick="this.parentElement.remove()">
             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
@@ -1009,8 +1017,8 @@ function renderAlternativeCards(alternatives, actual) {
             <div class="${borderClass} rounded shadow-md p-4 transition-all hover:shadow-none">
                 <div class="flex justify-between items-start mb-2">
                     <div>
-                        <span class="font-semibold text-[var(--foreground)]">${alt.ticker}</span>
-                        <span class="text-[var(--muted-foreground)] text-sm block">${alt.name}</span>
+                        <span class="font-semibold text-[var(--foreground)]">${escapeHtml(alt.ticker)}</span>
+                        <span class="text-[var(--muted-foreground)] text-sm block">${escapeHtml(alt.name)}</span>
                     </div>
                     <span class="text-lg font-bold ${alt.return_pct >= 0 ? 'text-[var(--success)]' : 'text-[var(--destructive)]'}">
                         ${alt.return_pct >= 0 ? '+' : ''}${alt.return_pct.toFixed(2)}%
@@ -1062,7 +1070,7 @@ function renderDetailComparisonTable(purchase, actual, alternatives) {
             <td class="px-6 py-4 whitespace-nowrap">
                 <div class="flex items-center">
                     ${idx === 0 ? '<span class="text-[var(--success)] mr-2">👑</span>' : ''}
-                    <span class="font-medium ${row.isActual ? 'text-[var(--primary)]' : 'text-[var(--foreground)]'}">${row.isActual ? row.name : row.name || row.ticker}</span>
+                    <span class="font-medium ${row.isActual ? 'text-[var(--primary)]' : 'text-[var(--foreground)]'}">${escapeHtml(row.isActual ? row.name : row.name || row.ticker)}</span>
                     ${row.isActual ? '<span class="ml-2 px-2 py-1 text-xs border-2 border-[var(--border)] rounded bg-[var(--primary)]/10 text-[var(--primary)]">You</span>' : ''}
                 </div>
             </td>
@@ -1294,7 +1302,7 @@ function renderSharePreview() {
             <div class="grid grid-cols-2 gap-3 mb-4">
                 <div class="bg-white/10 backdrop-blur-sm border-2 border-white/30 rounded shadow-sm p-3">
                     <div class="text-xs text-blue-100 mb-1">Best Benchmark</div>
-                    <div class="font-semibold">${best.ticker}</div>
+                    <div class="font-semibold">${escapeHtml(best.ticker)}</div>
                     <div class="text-sm ${best.return_pct >= 0 ? 'text-green-300' : 'text-red-300'}">
                         ${best.return_pct >= 0 ? '+' : ''}${best.return_pct.toFixed(2)}%
                     </div>
@@ -1302,7 +1310,7 @@ function renderSharePreview() {
 
                 <div class="bg-white/10 backdrop-blur-sm border-2 border-white/30 rounded shadow-sm p-3">
                     <div class="text-xs text-blue-100 mb-1">Worst Benchmark</div>
-                    <div class="font-semibold">${worst.ticker}</div>
+                    <div class="font-semibold">${escapeHtml(worst.ticker)}</div>
                     <div class="text-sm ${worst.return_pct >= 0 ? 'text-green-300' : 'text-red-300'}">
                         ${worst.return_pct >= 0 ? '+' : ''}${worst.return_pct.toFixed(2)}%
                     </div>
@@ -1315,7 +1323,7 @@ function renderSharePreview() {
                     ${opportunityCost > 0 ? '-' : '+'}${formatCurrency(Math.abs(opportunityCost))}
                 </div>
                 <div class="text-xs text-blue-100 mt-1">
-                    ${opportunityCost > 0 ? `vs ${best.ticker}` : 'Beating all benchmarks!'}
+                    ${opportunityCost > 0 ? `vs ${escapeHtml(best.ticker)}` : 'Beating all benchmarks!'}
                 </div>
             </div>
 

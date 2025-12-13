@@ -3,11 +3,13 @@ from flask_login import login_user, logout_user, login_required, current_user
 from flask_wtf.csrf import generate_csrf
 from app.auth import oauth
 from app.auth.auth_service import AuthService
+from app import csrf
 
 auth_bp = Blueprint('auth', __name__)
 
 
 @auth_bp.route('/auth/google/login')
+@csrf.exempt  # OAuth initiation doesn't have CSRF token
 def google_login():
     """Initiate Google OAuth login."""
     if not current_app.config.get('GOOGLE_CLIENT_ID'):
@@ -18,6 +20,7 @@ def google_login():
 
 
 @auth_bp.route('/auth/google/callback')
+@csrf.exempt  # OAuth callback from external provider doesn't have CSRF token
 def google_callback():
     """Handle Google OAuth callback."""
     try:

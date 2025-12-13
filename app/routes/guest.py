@@ -1,6 +1,6 @@
 from flask import Blueprint, request, jsonify
 from flask_login import login_required, current_user
-from app import db
+from app import db, csrf
 from app.models import Purchase, ComparisonStock
 from app.services.stock_data import (
     validate_ticker, is_trading_day, get_price_on_date,
@@ -11,6 +11,10 @@ from collections import namedtuple
 
 guest_bp = Blueprint('guest', __name__)
 
+# Note: migrate_guest_purchases requires CSRF protection because it modifies
+# the database (creates Purchase records). Other guest endpoints are stateless
+# calculations that don't persist data.
+
 # Simple namedtuple to represent guest purchases (no database interaction)
 GuestPurchase = namedtuple('GuestPurchase', [
     'id', 'ticker', 'purchase_date', 'amount',
@@ -19,6 +23,7 @@ GuestPurchase = namedtuple('GuestPurchase', [
 
 
 @guest_bp.route('/guest/purchases/validate', methods=['POST'])
+@csrf.exempt  # Stateless validation, no data persistence
 def validate_purchase():
     """
     Validate a purchase and return calculated fields.
@@ -105,6 +110,7 @@ def validate_purchase():
 
 
 @guest_bp.route('/guest/portfolio/summary', methods=['POST'])
+@csrf.exempt  # Stateless calculation, no data persistence
 def get_guest_portfolio_summary():
     """
     Get portfolio summary for guest purchases.
@@ -222,6 +228,7 @@ def get_guest_portfolio_summary():
 
 
 @guest_bp.route('/guest/portfolio/history', methods=['POST'])
+@csrf.exempt  # Stateless calculation, no data persistence
 def get_guest_portfolio_history():
     """
     Get historical portfolio values for charting.

@@ -23,11 +23,14 @@ class Config:
     SESSION_COOKIE_SECURE = os.environ.get('SESSION_COOKIE_SECURE', 'False').lower() == 'true'
     SESSION_COOKIE_HTTPONLY = True
     SESSION_COOKIE_SAMESITE = 'Lax'
-    PERMANENT_SESSION_LIFETIME = 86400 * 30  # 30 days
+    PERMANENT_SESSION_LIFETIME = 86400 * 7  # 7 days
 
     # CSRF configuration
     WTF_CSRF_ENABLED = True
-    WTF_CSRF_TIME_LIMIT = None  # No expiry for SPA
+    WTF_CSRF_TIME_LIMIT = 3600  # 1 hour expiry
+
+    # Request size limit (1MB max)
+    MAX_CONTENT_LENGTH = 1 * 1024 * 1024
 
     # Test auth (dev mode)
     ENABLE_TEST_AUTH = os.environ.get('ENABLE_TEST_AUTH', 'False').lower() == 'true'

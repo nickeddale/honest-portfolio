@@ -1,6 +1,6 @@
 from flask import Blueprint, jsonify, request, send_file
 from flask_login import login_required, current_user
-from app import db
+from app import db, csrf
 from app.models import Purchase, ComparisonStock, PortfolioShare
 from app.services.stock_data import get_price_on_date, get_current_prices
 from app.services.image_generator import generate_share_image
@@ -8,6 +8,9 @@ import uuid
 from io import BytesIO
 
 share_bp = Blueprint('share', __name__)
+
+# Note: POST /share/create and DELETE /share/<token> require CSRF protection
+# because they modify data and require authentication.
 
 
 @share_bp.route('/share/create', methods=['POST'])
