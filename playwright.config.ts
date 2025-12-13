@@ -47,7 +47,10 @@ export default defineConfig({
 
   /* Run Flask development server before starting the tests */
   webServer: {
-    command: 'source venv/bin/activate && FLASK_USE_RELOADER=0 python run.py',
+    // Use python directly in CI (deps installed globally), use venv locally
+    command: process.env.CI
+      ? 'python run.py'
+      : 'source venv/bin/activate && python run.py',
     port: 5000,
     reuseExistingServer: !process.env.CI,
     env: {
