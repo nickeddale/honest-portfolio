@@ -1,5 +1,11 @@
 {
   "devDependencies": {
-    "playwright": "^1.57.0"
+    "playwright": "^1.57.0",
+    "@playwright/test": "^1.57.0"
+  },
+  "scripts": {
+    "test:e2e": "playwright test",
+    "test:e2e:headed": "playwright test --headed",
+    "test:e2e:debug": "playwright test --debug"
   }
 }

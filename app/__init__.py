@@ -96,13 +96,16 @@ def create_app():
     limiter.limit("100 per hour")(share_bp)
     # Stock validation: 50/hour (makes external API calls)
     limiter.limit("50 per hour")(stocks_bp)
-    # Auth endpoints: 10/minute (prevent brute force)
-    limiter.limit("10 per minute")(auth_bp)
+    # Auth endpoints: 10/minute (prevent brute force) - unless in test mode
+    if not app.config.get('ENABLE_TEST_AUTH'):
+        limiter.limit("10 per minute")(auth_bp)
 
-    # CSRF exemptions: Only exempt test endpoints at blueprint level.
+    # CSRF and rate limit exemptions for test endpoints
+    # Only exempt test endpoints at blueprint level for development only.
     # Other exemptions are applied to specific routes in their blueprint files.
     # State-changing endpoints (POST/DELETE) that require auth MUST have CSRF protection.
-    csrf.exempt(test_auth_bp)  # Test endpoints exempt for development only
+    csrf.exempt(test_auth_bp)  # Test endpoints exempt from CSRF
+    limiter.exempt(test_auth_bp)  # Test endpoints exempt from rate limiting
 
     # Serve the SPA
     @app.route('/')
