@@ -1,6 +1,7 @@
 import yfinance as yf
 import math
 from datetime import datetime, timedelta
+from sqlalchemy.exc import IntegrityError
 from app import db
 from app.models import PriceCache
 
@@ -103,14 +104,20 @@ def get_price_on_date(ticker: str, date) -> float:
         if math.isnan(close_price):
             return None
 
-        # Cache the price
-        cache_entry = PriceCache(ticker=ticker, date=date, close_price=close_price)
-        db.session.add(cache_entry)
-        db.session.commit()
+        # Cache the price - handle race condition where another request may have
+        # cached the same price concurrently
+        try:
+            cache_entry = PriceCache(ticker=ticker, date=date, close_price=close_price)
+            db.session.add(cache_entry)
+            db.session.commit()
+        except IntegrityError:
+            # Another request already cached this price - rollback and continue
+            db.session.rollback()
 
         return close_price
     except Exception as e:
         print(f"Error fetching price for {ticker} on {date}: {e}")
+        db.session.rollback()
         return None
 
 def get_current_price(ticker: str) -> float:
@@ -192,13 +199,20 @@ def get_price_history(ticker: str, start_date, end_date=None) -> dict:
                             'close_price': close_price
                         })
 
-                # Bulk insert new cache entries
+                # Bulk insert new cache entries - handle race condition where another
+                # request may have cached the same prices concurrently
                 if new_cache_entries:
-                    db.session.bulk_insert_mappings(PriceCache, new_cache_entries)
-                    db.session.commit()
+                    try:
+                        db.session.bulk_insert_mappings(PriceCache, new_cache_entries)
+                        db.session.commit()
+                    except IntegrityError:
+                        # Another request already cached some/all prices - rollback and continue
+                        # The prices dict already has the values we need
+                        db.session.rollback()
 
         return prices
 
     except Exception as e:
         print(f"Error fetching price history for {ticker}: {e}")
+        db.session.rollback()
         return {}
