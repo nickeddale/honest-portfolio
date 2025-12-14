@@ -86,6 +86,15 @@
                         <p id="portfolio-return" class="text-5xl font-bold mb-2">+0.0%</p>
                     </div>
 
+                    <!-- S&P 500 Section -->
+                    <div id="spy-section" class="hidden text-center mb-8 pb-8 border-b-2 border-[var(--border)]">
+                        <p class="text-[var(--muted-foreground)] text-sm font-medium uppercase tracking-wider mb-3">S&P 500 Return</p>
+                        <div class="flex justify-center items-center gap-4">
+                            <span class="text-xl font-bold text-[var(--foreground)]">SPY</span>
+                            <span id="spy-return" class="text-3xl font-semibold">+0.0%</span>
+                        </div>
+                    </div>
+
                     <!-- Benchmarks Section -->
                     <div class="grid grid-cols-2 gap-6 mb-8 pb-8 border-b-2 border-[var(--border)]">
                         <!-- Best Benchmark -->
@@ -168,6 +177,16 @@
                 const portfolioReturnEl = document.getElementById('portfolio-return');
                 portfolioReturnEl.textContent = formatPercentage(data.portfolio_return_pct);
                 portfolioReturnEl.className = `text-5xl font-bold mb-2 ${getColorClass(data.portfolio_return_pct)}`;
+
+                // S&P 500 Return (if available)
+                if (data.spy_return_pct !== null && data.spy_return_pct !== undefined) {
+                    const spySection = document.getElementById('spy-section');
+                    spySection.classList.remove('hidden');
+
+                    const spyReturnEl = document.getElementById('spy-return');
+                    spyReturnEl.textContent = formatPercentage(data.spy_return_pct);
+                    spyReturnEl.className = `text-3xl font-semibold ${data.spy_return_pct >= 0 ? 'text-[var(--success)]' : 'text-[var(--destructive)]'}`;
+                }
 
                 // Best benchmark
                 document.getElementById('best-ticker').textContent = data.best_benchmark_ticker;

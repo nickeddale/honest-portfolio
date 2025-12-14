@@ -212,7 +212,7 @@ class SummaryCardGenerator:
             Y position after this section
         """
         card_width = self.WIDTH - 2 * self.SIDE_PADDING
-        card_height = 200
+        card_height = 180
         card_x = self.SIDE_PADDING
         card_y = y_start
 
@@ -250,6 +250,69 @@ class SummaryCardGenerator:
 
         return card_y + card_height
 
+    def _draw_spy_return_card(
+        self,
+        draw: ImageDraw.ImageDraw,
+        spy_return: float,
+        y_start: int
+    ) -> int:
+        """
+        Draw the S&P 500 return card.
+
+        Returns:
+            Y position after this section
+        """
+        card_width = self.WIDTH - 2 * self.SIDE_PADDING
+        card_height = 140
+        card_x = self.SIDE_PADDING
+        card_y = y_start
+
+        # Draw card background
+        self._draw_card(draw, card_x, card_y, card_width, card_height)
+
+        center_x = self.WIDTH // 2
+
+        # Label: "S&P 500 Return"
+        label_y = card_y + self.CARD_PADDING
+        self._draw_text(
+            draw,
+            "S&P 500 Return",
+            center_x,
+            label_y,
+            self.font_label,
+            self.TEXT_GRAY,
+            align='center'
+        )
+
+        # Ticker and Return on same line
+        ticker_y = label_y + 50
+
+        # Draw "SPY" on the left side of center
+        self._draw_text(
+            draw,
+            "SPY",
+            center_x - 80,
+            ticker_y,
+            self.font_ticker,
+            self.DARK_BORDER,
+            align='center'
+        )
+
+        # Draw return percentage on the right side of center
+        return_text = self._format_percentage(spy_return)
+        return_color = self._get_color_for_value(spy_return)
+        self._draw_text(
+            draw,
+            return_text,
+            center_x + 80,
+            ticker_y,
+            self.font_return,
+            return_color,
+            align='center'
+        )
+
+        return card_y + card_height
+
     def _draw_benchmark_cards(
         self,
         draw: ImageDraw.ImageDraw,
@@ -265,7 +328,7 @@ class SummaryCardGenerator:
         Returns:
             Y position after this section
         """
-        card_height = 200
+        card_height = 160
         gap = 24
         card_width = (self.WIDTH - 2 * self.SIDE_PADDING - gap) // 2
 
@@ -366,7 +429,7 @@ class SummaryCardGenerator:
             Y position after this section
         """
         card_width = self.WIDTH - 2 * self.SIDE_PADDING
-        card_height = 190
+        card_height = 160
         card_x = self.SIDE_PADDING
 
         # Draw card
@@ -449,6 +512,7 @@ class SummaryCardGenerator:
         Args:
             share_data: Dictionary containing:
                 - portfolio_return_pct: float
+                - spy_return_pct: float (optional)
                 - best_benchmark_ticker: str
                 - best_benchmark_return_pct: float
                 - worst_benchmark_ticker: str
@@ -464,13 +528,14 @@ class SummaryCardGenerator:
 
         # Extract data
         portfolio_return = share_data.get('portfolio_return_pct', 0)
+        spy_return = share_data.get('spy_return_pct')  # May be None for old shares
         best_ticker = share_data.get('best_benchmark_ticker', 'N/A')
         best_return = share_data.get('best_benchmark_return_pct', 0)
         worst_ticker = share_data.get('worst_benchmark_ticker', 'N/A')
         worst_return = share_data.get('worst_benchmark_return_pct', 0)
         opportunity_cost = share_data.get('opportunity_cost_pct', 0)
 
-        # Layout from top to bottom with proper spacing
+        # Layout from top to bottom with adjusted spacing
         y = self.TOP_PADDING
 
         # Title
@@ -479,8 +544,13 @@ class SummaryCardGenerator:
         # Your Return card
         y = self._draw_your_return_card(draw, portfolio_return, y)
 
+        # SPY Return card (if available)
+        if spy_return is not None:
+            y += 30
+            y = self._draw_spy_return_card(draw, spy_return, y)
+
         # Benchmark cards (side by side)
-        y += self.SECTION_GAP
+        y += 30
         y = self._draw_benchmark_cards(
             draw,
             best_ticker,
@@ -491,11 +561,11 @@ class SummaryCardGenerator:
         )
 
         # Opportunity cost card
-        y += self.SECTION_GAP
+        y += 30
         y = self._draw_opportunity_cost_card(draw, opportunity_cost, best_ticker, y)
 
         # Footer
-        y += self.SECTION_GAP
+        y += 30
         y = self._draw_footer(draw, y)
 
         # Convert to bytes

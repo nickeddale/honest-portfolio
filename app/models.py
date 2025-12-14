@@ -133,6 +133,7 @@ class PortfolioShare(db.Model):
     worst_benchmark_name = db.Column(db.String(100), nullable=False)
     worst_benchmark_return_pct = db.Column(db.Float, nullable=False)
     opportunity_cost_pct = db.Column(db.Float, nullable=False)  # Difference vs best benchmark
+    spy_return_pct = db.Column(db.Float, nullable=True)
 
     # Metadata
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
@@ -152,6 +153,7 @@ class PortfolioShare(db.Model):
             'worst_benchmark_name': self.worst_benchmark_name,
             'worst_benchmark_return_pct': self.worst_benchmark_return_pct,
             'opportunity_cost_pct': self.opportunity_cost_pct,
+            'spy_return_pct': self.spy_return_pct,
             'created_at': self.created_at.isoformat() if self.created_at else None,
             'view_count': self.view_count
         }

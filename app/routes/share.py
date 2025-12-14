@@ -79,6 +79,10 @@ def create_share():
             'return_pct': alt_return_pct
         })
 
+    # Extract SPY return specifically
+    spy_data = next((alt for alt in alternatives if alt['ticker'] == 'SPY'), None)
+    spy_return_pct = spy_data['return_pct'] if spy_data else None
+
     # Find best and worst performing benchmarks
     if not alternatives:
         return jsonify({'error': 'No benchmark data available'}), 500
@@ -103,7 +107,8 @@ def create_share():
         worst_benchmark_ticker=worst_benchmark['ticker'],
         worst_benchmark_name=worst_benchmark['name'],
         worst_benchmark_return_pct=round(worst_benchmark['return_pct'], 2),
-        opportunity_cost_pct=round(opportunity_cost_pct, 2)
+        opportunity_cost_pct=round(opportunity_cost_pct, 2),
+        spy_return_pct=round(spy_return_pct, 2) if spy_return_pct is not None else None
     )
 
     db.session.add(share)

@@ -1275,6 +1275,9 @@ function renderSharePreview() {
     const sharePreview = document.getElementById('share-preview');
     const { actual, alternatives } = portfolioSummary;
 
+    // Find SPY
+    const spy = alternatives.find(a => a.ticker === 'SPY');
+
     // Find best and worst benchmarks
     const best = alternatives.reduce((a, b) => a.return_pct > b.return_pct ? a : b);
     const worst = alternatives.reduce((a, b) => a.return_pct < b.return_pct ? a : b);
@@ -1298,6 +1301,18 @@ function renderSharePreview() {
                     ${actual.return_pct >= 0 ? '+' : ''}${actual.return_pct.toFixed(2)}%
                 </div>
             </div>
+
+            ${spy ? `
+            <div class="bg-white/10 backdrop-blur-sm border-2 border-white/30 rounded shadow-sm p-3 mb-3">
+                <div class="text-xs text-blue-100 mb-1">S&P 500 Return</div>
+                <div class="flex justify-between items-center">
+                    <span class="font-semibold">SPY</span>
+                    <span class="text-lg ${spy.return_pct >= 0 ? 'text-green-300' : 'text-red-300'}">
+                        ${spy.return_pct >= 0 ? '+' : ''}${spy.return_pct.toFixed(2)}%
+                    </span>
+                </div>
+            </div>
+            ` : ''}
 
             <div class="grid grid-cols-2 gap-3 mb-4">
                 <div class="bg-white/10 backdrop-blur-sm border-2 border-white/30 rounded shadow-sm p-3">
