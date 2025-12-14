@@ -7,6 +7,10 @@ let portfolioSummary = null;
 let portfolioHistory = null;
 let chart = null;
 
+// PDF Upload State
+let extractedTrades = [];
+let selectedTradeIds = new Set();
+
 // Router state
 let currentView = 'portfolio'; // 'portfolio' | 'purchase-detail'
 let currentPurchaseId = null;
@@ -36,8 +40,10 @@ const calculatedAmountSpan = document.getElementById('calculated-amount');
 // Tab elements
 const tabQuickAdd = document.getElementById('tab-quick-add');
 const tabDetailedEntry = document.getElementById('tab-detailed-entry');
+const tabPdfUpload = document.getElementById('tab-pdf-upload');
 const panelQuickAdd = document.getElementById('panel-quick-add');
 const panelDetailedEntry = document.getElementById('panel-detailed-entry');
+const panelPdfUpload = document.getElementById('panel-pdf-upload');
 
 // Shared form elements
 const formError = document.getElementById('form-error');
@@ -60,27 +66,34 @@ const purchasesSection = document.getElementById('purchases-section');
 document.addEventListener('DOMContentLoaded', init);
 
 function switchTab(tab) {
-    if (tab === 'quick-add') {
-        // Update tab styles
-        tabQuickAdd.classList.add('text-[var(--primary)]', 'border-[var(--primary)]');
-        tabQuickAdd.classList.remove('text-[var(--muted-foreground)]', 'border-transparent');
-        tabDetailedEntry.classList.remove('text-[var(--primary)]', 'border-[var(--primary)]');
-        tabDetailedEntry.classList.add('text-[var(--muted-foreground)]', 'border-transparent');
+    // Reset all tabs
+    const tabs = [
+        { tab: tabQuickAdd, panel: panelQuickAdd, name: 'quick-add' },
+        { tab: tabDetailedEntry, panel: panelDetailedEntry, name: 'detailed-entry' },
+        { tab: tabPdfUpload, panel: panelPdfUpload, name: 'pdf-upload' }
+    ];
 
-        // Show/hide panels
-        panelQuickAdd.classList.remove('hidden');
-        panelDetailedEntry.classList.add('hidden');
-    } else {
-        // Update tab styles
-        tabDetailedEntry.classList.add('text-[var(--primary)]', 'border-[var(--primary)]');
-        tabDetailedEntry.classList.remove('text-[var(--muted-foreground)]', 'border-transparent');
-        tabQuickAdd.classList.remove('text-[var(--primary)]', 'border-[var(--primary)]');
-        tabQuickAdd.classList.add('text-[var(--muted-foreground)]', 'border-transparent');
-
-        // Show/hide panels
-        panelDetailedEntry.classList.remove('hidden');
-        panelQuickAdd.classList.add('hidden');
-    }
+    tabs.forEach(({ tab: tabEl, panel, name }) => {
+        if (tab === name) {
+            // Active tab
+            if (tabEl) {
+                tabEl.classList.add('text-[var(--primary)]', 'border-[var(--primary)]');
+                tabEl.classList.remove('text-[var(--muted-foreground)]', 'border-transparent');
+            }
+            if (panel) {
+                panel.classList.remove('hidden');
+            }
+        } else {
+            // Inactive tab
+            if (tabEl) {
+                tabEl.classList.remove('text-[var(--primary)]', 'border-[var(--primary)]');
+                tabEl.classList.add('text-[var(--muted-foreground)]', 'border-transparent');
+            }
+            if (panel) {
+                panel.classList.add('hidden');
+            }
+        }
+    });
 }
 
 function setupDetailedEntryCalculation() {
@@ -123,6 +136,9 @@ async function init() {
     // Setup tab switching
     tabQuickAdd.addEventListener('click', () => switchTab('quick-add'));
     tabDetailedEntry.addEventListener('click', () => switchTab('detailed-entry'));
+    if (tabPdfUpload) {
+        tabPdfUpload.addEventListener('click', () => switchTab('pdf-upload'));
+    }
 
     // Setup auto-calculation for detailed entry
     setupDetailedEntryCalculation();
@@ -132,6 +148,12 @@ async function init() {
 
     // Initialize modal event listeners
     initModalListeners();
+
+    // Initialize static event listeners
+    initStaticEventListeners();
+
+    // Initialize PDF upload
+    initPdfUpload();
 
     // Register service worker
     if ('serviceWorker' in navigator) {
@@ -506,8 +528,8 @@ function renderPurchasesList() {
     }
 
     purchasesList.innerHTML = purchases.map(p => `
-        <div class="flex items-center justify-between p-3 bg-[var(--card)] border-2 border-[var(--border)] rounded shadow-md hover:shadow-none cursor-pointer transition-all"
-             onclick="navigateToPurchase(${p.id})">
+        <div class="purchase-item flex items-center justify-between p-3 bg-[var(--card)] border-2 border-[var(--border)] rounded shadow-md hover:shadow-none cursor-pointer transition-all"
+             data-purchase-id="${p.id}">
             <div>
                 <span class="font-semibold text-[var(--card-foreground)]">${escapeHtml(p.ticker)}</span>
                 <span class="text-[var(--muted-foreground)] text-sm ml-2">${formatDate(p.purchase_date)}</span>
@@ -515,7 +537,8 @@ function renderPurchasesList() {
             <div class="flex items-center gap-4">
                 <span class="text-[var(--card-foreground)]">${formatCurrency(p.amount)}</span>
                 <span class="text-[var(--muted-foreground)] text-sm">${p.shares_bought.toFixed(4)} shares @ ${formatCurrency(p.price_at_purchase)}</span>
-                <button onclick="event.stopPropagation(); deletePurchase(${p.id})" class="p-1 border-2 border-[var(--border)] rounded shadow-md hover:shadow-none hover:translate-y-0.5 transition-all text-[var(--destructive)]">
+                <button class="delete-purchase-btn p-1 border-2 border-[var(--border)] rounded shadow-md hover:shadow-none hover:translate-y-0.5 transition-all text-[var(--destructive)]"
+                        data-delete-id="${p.id}">
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                     </svg>
@@ -745,7 +768,7 @@ function showToast(message, type = 'info', duration = 4000) {
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="${style.iconPath}"/>
         </svg>
         <span class="text-sm font-medium text-[var(--foreground)] flex-1">${escapeHtml(message)}</span>
-        <button class="text-[var(--muted-foreground)] hover:text-[var(--foreground)] flex-shrink-0" onclick="this.parentElement.remove()">
+        <button class="toast-close-btn text-[var(--muted-foreground)] hover:text-[var(--foreground)] flex-shrink-0">
             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
             </svg>
@@ -838,6 +861,104 @@ function initModalListeners() {
             }
         }
     });
+}
+
+function initStaticEventListeners() {
+    // Logout button
+    const logoutBtn = document.getElementById('logout-btn');
+    if (logoutBtn) {
+        logoutBtn.addEventListener('click', () => authManager.logout());
+    }
+
+    // Share results button
+    const shareResultsBtn = document.getElementById('share-results-btn');
+    if (shareResultsBtn) {
+        shareResultsBtn.addEventListener('click', openShareModal);
+    }
+
+    // Navigate back button
+    const navigateBackBtn = document.getElementById('navigate-back-btn');
+    if (navigateBackBtn) {
+        navigateBackBtn.addEventListener('click', navigateBack);
+    }
+
+    // Share modal backdrop
+    const shareModalBackdrop = document.getElementById('share-modal-backdrop');
+    if (shareModalBackdrop) {
+        shareModalBackdrop.addEventListener('click', closeShareModal);
+    }
+
+    // Share modal close button
+    const shareModalCloseBtn = document.getElementById('share-modal-close-btn');
+    if (shareModalCloseBtn) {
+        shareModalCloseBtn.addEventListener('click', closeShareModal);
+    }
+
+    // Download share image button
+    const downloadShareBtn = document.getElementById('download-share-btn');
+    if (downloadShareBtn) {
+        downloadShareBtn.addEventListener('click', downloadShareImage);
+    }
+
+    // Copy share link button
+    const copyShareLinkBtn = document.getElementById('copy-share-link-btn');
+    if (copyShareLinkBtn) {
+        copyShareLinkBtn.addEventListener('click', copyShareLink);
+    }
+
+    // Dismiss guest prompt button
+    const dismissGuestPromptBtn = document.getElementById('dismiss-guest-prompt-btn');
+    if (dismissGuestPromptBtn) {
+        dismissGuestPromptBtn.addEventListener('click', dismissGuestPrompt);
+    }
+
+    // Google sign-in buttons (multiple)
+    document.querySelectorAll('.google-signin-btn').forEach(btn => {
+        btn.addEventListener('click', () => authManager.loginWith('google'));
+    });
+
+    // Event delegation for purchases list (dynamic content)
+    const purchasesList = document.getElementById('purchases-list');
+    if (purchasesList) {
+        purchasesList.addEventListener('click', (e) => {
+            // Handle delete button click
+            const deleteBtn = e.target.closest('.delete-purchase-btn');
+            if (deleteBtn) {
+                e.stopPropagation();
+                const purchaseId = deleteBtn.dataset.deleteId;
+                if (purchaseId) {
+                    // Handle both numeric and guest_ prefixed IDs
+                    const id = purchaseId.startsWith('guest_') ? purchaseId : parseInt(purchaseId);
+                    deletePurchase(id);
+                }
+                return;
+            }
+
+            // Handle purchase item click
+            const purchaseItem = e.target.closest('.purchase-item');
+            if (purchaseItem) {
+                const purchaseId = purchaseItem.dataset.purchaseId;
+                if (purchaseId) {
+                    const id = purchaseId.startsWith('guest_') ? purchaseId : parseInt(purchaseId);
+                    navigateToPurchase(id);
+                }
+            }
+        });
+    }
+
+    // Event delegation for toast close buttons (dynamic content)
+    const toastContainer = document.getElementById('toast-container');
+    if (toastContainer) {
+        toastContainer.addEventListener('click', (e) => {
+            const closeBtn = e.target.closest('.toast-close-btn');
+            if (closeBtn) {
+                const toast = closeBtn.closest('.pointer-events-auto');
+                if (toast) {
+                    toast.remove();
+                }
+            }
+        });
+    }
 }
 
 function showError(message) {
@@ -1347,4 +1468,365 @@ function renderSharePreview() {
             </div>
         </div>
     `;
+}
+
+// ==================== PDF Upload ====================
+
+function initPdfUpload() {
+    const fileInput = document.getElementById('pdf-file-input');
+    const dropZone = document.getElementById('pdf-drop-zone');
+
+    // File input change handler
+    if (fileInput) {
+        fileInput.addEventListener('change', (e) => {
+            if (e.target.files[0]) handlePdfFile(e.target.files[0]);
+        });
+    }
+
+    // Drag and drop handlers
+    if (dropZone) {
+        dropZone.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            dropZone.classList.add('border-[var(--primary)]', 'bg-[var(--primary)]/10');
+        });
+
+        dropZone.addEventListener('dragleave', (e) => {
+            e.preventDefault();
+            dropZone.classList.remove('border-[var(--primary)]', 'bg-[var(--primary)]/10');
+        });
+
+        dropZone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            dropZone.classList.remove('border-[var(--primary)]', 'bg-[var(--primary)]/10');
+            const file = e.dataTransfer.files[0];
+            if (file && file.type === 'application/pdf') {
+                handlePdfFile(file);
+            } else {
+                showPdfStatus('Please upload a PDF file', 'error');
+            }
+        });
+    }
+
+    // Modal event listeners
+    initPdfModalListeners();
+}
+
+function initPdfModalListeners() {
+    const backdrop = document.getElementById('pdf-modal-backdrop');
+    const closeBtn = document.getElementById('pdf-modal-close');
+    const cancelBtn = document.getElementById('pdf-cancel-btn');
+    const saveBtn = document.getElementById('pdf-save-btn');
+    const selectAll = document.getElementById('pdf-select-all');
+
+    if (backdrop) backdrop.addEventListener('click', closePdfModal);
+    if (closeBtn) closeBtn.addEventListener('click', closePdfModal);
+    if (cancelBtn) cancelBtn.addEventListener('click', closePdfModal);
+    if (saveBtn) saveBtn.addEventListener('click', saveSelectedTrades);
+
+    // Select all checkbox
+    if (selectAll) {
+        selectAll.addEventListener('change', (e) => {
+            const checkboxes = document.querySelectorAll('#pdf-trades-tbody input[type="checkbox"]:not(:disabled)');
+            checkboxes.forEach(cb => {
+                cb.checked = e.target.checked;
+                const tradeId = cb.dataset.tradeId;
+                if (e.target.checked) {
+                    selectedTradeIds.add(tradeId);
+                } else {
+                    selectedTradeIds.delete(tradeId);
+                }
+            });
+            updateSelectedCount();
+        });
+    }
+}
+
+async function handlePdfFile(file) {
+    // Check auth
+    if (!authManager.isAuthenticated()) {
+        showPdfStatus('Please sign in to upload PDF trades', 'error');
+        return;
+    }
+
+    // Validate file
+    if (file.type !== 'application/pdf') {
+        showPdfStatus('Please upload a PDF file', 'error');
+        return;
+    }
+
+    if (file.size > 10 * 1024 * 1024) {
+        showPdfStatus('File too large. Maximum size is 10MB', 'error');
+        return;
+    }
+
+    // Show loading
+    showPdfStatus('Extracting trades from PDF... This may take a moment.', 'loading');
+
+    try {
+        const formData = new FormData();
+        formData.append('file', file);
+
+        // Note: Don't set Content-Type header for FormData - browser sets it with boundary
+        const response = await fetch(`${API_BASE}/uploads/pdf/extract`, {
+            method: 'POST',
+            body: formData,
+            credentials: 'include',
+            headers: {
+                'X-CSRFToken': authManager.csrfToken
+            }
+        });
+
+        const result = await response.json();
+
+        if (!response.ok) {
+            throw new Error(result.error || 'Failed to extract trades');
+        }
+
+        if (!result.trades || result.trades.length === 0) {
+            showPdfStatus('No trades found in the PDF. Try a different document.', 'warning');
+            return;
+        }
+
+        // Store trades and open modal
+        extractedTrades = result.trades;
+        selectedTradeIds = new Set(
+            extractedTrades
+                .filter(t => t.validation && t.validation.valid)
+                .map(t => t.id)
+        );
+
+        showPdfStatus(`Found ${result.trades.length} trade(s). Review and confirm below.`, 'success');
+        openPdfConfirmModal(result);
+
+    } catch (error) {
+        console.error('PDF upload error:', error);
+        showPdfStatus(error.message || 'Failed to process PDF', 'error');
+    }
+
+    // Reset file input
+    document.getElementById('pdf-file-input').value = '';
+}
+
+function showPdfStatus(message, type) {
+    const statusDiv = document.getElementById('pdf-upload-status');
+    if (!statusDiv) return;
+
+    statusDiv.classList.remove('hidden');
+
+    const styles = {
+        loading: 'bg-blue-50 border-blue-200 text-blue-700',
+        success: 'bg-green-50 border-green-200 text-green-700',
+        error: 'bg-red-50 border-red-200 text-red-700',
+        warning: 'bg-yellow-50 border-yellow-200 text-yellow-700'
+    };
+
+    // Remove all style classes
+    statusDiv.className = 'mt-4 p-3 rounded border-2 ' + (styles[type] || styles.warning);
+
+    if (type === 'loading') {
+        statusDiv.innerHTML = `
+            <div class="flex items-center gap-2">
+                <svg class="animate-spin w-5 h-5" fill="none" viewBox="0 0 24 24">
+                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+                <span>${escapeHtml(message)}</span>
+            </div>`;
+    } else {
+        statusDiv.textContent = message;
+    }
+}
+
+function openPdfConfirmModal(result) {
+    const modal = document.getElementById('pdf-confirm-modal');
+    const notesDiv = document.getElementById('pdf-extraction-notes');
+    const tbody = document.getElementById('pdf-trades-tbody');
+    const selectAll = document.getElementById('pdf-select-all');
+
+    // Show notes if any
+    if (result.notes && result.notes.length > 0) {
+        notesDiv.classList.remove('hidden');
+        notesDiv.innerHTML = '<strong>Notes:</strong> ' + result.notes.map(n => escapeHtml(n)).join('; ');
+    } else {
+        notesDiv.classList.add('hidden');
+    }
+
+    // Render trades
+    tbody.innerHTML = extractedTrades.map(trade => renderTradeRow(trade)).join('');
+
+    // Add event listeners for checkboxes and inputs
+    tbody.querySelectorAll('input[type="checkbox"]').forEach(cb => {
+        cb.addEventListener('change', (e) => {
+            const tradeId = e.target.dataset.tradeId;
+            if (e.target.checked) {
+                selectedTradeIds.add(tradeId);
+            } else {
+                selectedTradeIds.delete(tradeId);
+            }
+            updateSelectedCount();
+        });
+    });
+
+    // Add input listeners for live editing
+    tbody.querySelectorAll('.trade-input').forEach(input => {
+        input.addEventListener('input', (e) => {
+            const tradeId = e.target.dataset.tradeId;
+            const field = e.target.dataset.field;
+            const trade = extractedTrades.find(t => t.id === tradeId);
+            if (trade) {
+                trade[field] = e.target.value;
+                // Recalculate total
+                if (field === 'quantity' || field === 'price_per_share') {
+                    const qty = parseFloat(trade.quantity) || 0;
+                    const price = parseFloat(trade.price_per_share) || 0;
+                    trade.total_amount = (qty * price).toFixed(2);
+                    const totalCell = tbody.querySelector(`[data-total-id="${tradeId}"]`);
+                    if (totalCell) totalCell.textContent = formatCurrency(trade.total_amount);
+                }
+            }
+        });
+    });
+
+    // Reset select all
+    if (selectAll) selectAll.checked = false;
+
+    updateSelectedCount();
+
+    // Show modal
+    modal.classList.remove('hidden');
+    document.body.style.overflow = 'hidden';
+}
+
+function renderTradeRow(trade) {
+    const isSelected = selectedTradeIds.has(trade.id);
+    const validation = trade.validation || { valid: true, errors: [], warnings: [] };
+    const hasErrors = validation.errors && validation.errors.length > 0;
+    const hasWarnings = validation.warnings && validation.warnings.length > 0;
+
+    let statusIcon, statusClass, statusTitle;
+    if (hasErrors) {
+        statusIcon = '&#10060;'; // X
+        statusClass = 'text-red-600';
+        statusTitle = validation.errors.join(', ');
+    } else if (hasWarnings) {
+        statusIcon = '&#9888;'; // Warning
+        statusClass = 'text-yellow-600';
+        statusTitle = validation.warnings.join(', ');
+    } else {
+        statusIcon = '&#10003;'; // Check
+        statusClass = 'text-green-600';
+        statusTitle = 'Valid';
+    }
+
+    return `
+        <tr class="${hasErrors ? 'bg-red-50' : 'hover:bg-gray-50'}">
+            <td class="px-3 py-2">
+                <input type="checkbox"
+                       data-trade-id="${trade.id}"
+                       ${isSelected && !hasErrors ? 'checked' : ''}
+                       ${hasErrors ? 'disabled title="Cannot save - has errors"' : ''}
+                       class="w-4 h-4">
+            </td>
+            <td class="px-3 py-2">
+                <input type="text"
+                       class="trade-input w-20 px-2 py-1 border rounded text-sm uppercase"
+                       data-trade-id="${trade.id}"
+                       data-field="ticker"
+                       value="${escapeHtml(trade.ticker || '')}">
+            </td>
+            <td class="px-3 py-2">
+                <input type="date"
+                       class="trade-input px-2 py-1 border rounded text-sm"
+                       data-trade-id="${trade.id}"
+                       data-field="purchase_date"
+                       value="${trade.purchase_date || ''}">
+            </td>
+            <td class="px-3 py-2 text-right">
+                <input type="number"
+                       class="trade-input w-24 px-2 py-1 border rounded text-sm text-right"
+                       data-trade-id="${trade.id}"
+                       data-field="quantity"
+                       value="${trade.quantity || ''}"
+                       step="0.0001" min="0">
+            </td>
+            <td class="px-3 py-2 text-right">
+                <input type="number"
+                       class="trade-input w-24 px-2 py-1 border rounded text-sm text-right"
+                       data-trade-id="${trade.id}"
+                       data-field="price_per_share"
+                       value="${trade.price_per_share || ''}"
+                       step="0.01" min="0">
+            </td>
+            <td class="px-3 py-2 text-right font-medium" data-total-id="${trade.id}">
+                ${formatCurrency(trade.total_amount || 0)}
+            </td>
+            <td class="px-3 py-2 text-center ${statusClass}" title="${escapeHtml(statusTitle)}">
+                ${statusIcon}
+            </td>
+        </tr>
+    `;
+}
+
+function closePdfModal() {
+    const modal = document.getElementById('pdf-confirm-modal');
+    modal.classList.add('hidden');
+    document.body.style.overflow = '';
+}
+
+function updateSelectedCount() {
+    const selectedSpan = document.getElementById('pdf-selected-count');
+    const totalSpan = document.getElementById('pdf-total-count');
+    const saveBtn = document.getElementById('pdf-save-btn');
+
+    if (selectedSpan) selectedSpan.textContent = selectedTradeIds.size;
+    if (totalSpan) totalSpan.textContent = extractedTrades.length;
+    if (saveBtn) saveBtn.disabled = selectedTradeIds.size === 0;
+}
+
+async function saveSelectedTrades() {
+    const saveBtn = document.getElementById('pdf-save-btn');
+    const originalText = saveBtn.textContent;
+    saveBtn.disabled = true;
+    saveBtn.textContent = 'Saving...';
+
+    try {
+        const tradesToSave = extractedTrades
+            .filter(t => selectedTradeIds.has(t.id) && t.validation && t.validation.valid)
+            .map(t => ({
+                ticker: t.ticker,
+                purchase_date: t.purchase_date,
+                quantity: parseFloat(t.quantity),
+                price_per_share: parseFloat(t.price_per_share)
+            }));
+
+        const response = await authManager.authFetch(`${API_BASE}/uploads/pdf/confirm`, {
+            method: 'POST',
+            body: JSON.stringify({ trades: tradesToSave })
+        });
+
+        const result = await response.json();
+
+        if (!response.ok && response.status !== 207) {
+            throw new Error(result.error || 'Failed to save trades');
+        }
+
+        closePdfModal();
+
+        // Show result
+        if (result.errors && result.errors.length > 0) {
+            showSuccess(`Saved ${result.saved} of ${result.total} trades. Some had errors.`);
+        } else {
+            showSuccess(`Successfully saved ${result.saved} trade(s)`);
+        }
+
+        // Reload data
+        await loadData();
+
+    } catch (error) {
+        console.error('Save trades error:', error);
+        showError(error.message || 'Failed to save trades');
+    } finally {
+        saveBtn.disabled = false;
+        saveBtn.textContent = originalText;
+    }
 }

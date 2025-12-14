@@ -1,9 +1,19 @@
 from flask import Blueprint, jsonify
 from flask_login import login_required, current_user
+import math
 from app.models import Purchase, ComparisonStock
 from app.services.stock_data import get_price_on_date, get_current_prices, get_price_history
 
 portfolio_bp = Blueprint('portfolio', __name__)
+
+
+def sanitize_float(value):
+    """Convert NaN/Inf to None for valid JSON."""
+    if value is None:
+        return None
+    if isinstance(value, float) and (math.isnan(value) or math.isinf(value)):
+        return None
+    return value
 
 
 @portfolio_bp.route('/portfolio/summary', methods=['GET'])
@@ -73,18 +83,18 @@ def get_portfolio_summary():
         alternatives.append({
             'ticker': comp_stock.ticker,
             'name': comp_stock.name,
-            'total_invested': total_invested,
-            'current_value': round(alt_current_value, 2),
-            'gain_loss': round(alt_gain_loss, 2),
-            'return_pct': round(alt_return_pct, 2)
+            'total_invested': sanitize_float(total_invested),
+            'current_value': sanitize_float(round(alt_current_value, 2)),
+            'gain_loss': sanitize_float(round(alt_gain_loss, 2)),
+            'return_pct': sanitize_float(round(alt_return_pct, 2))
         })
 
     return jsonify({
         'actual': {
-            'total_invested': round(total_invested, 2),
-            'current_value': round(actual_current_value, 2),
-            'gain_loss': round(actual_gain_loss, 2),
-            'return_pct': round(actual_return_pct, 2)
+            'total_invested': sanitize_float(round(total_invested, 2)),
+            'current_value': sanitize_float(round(actual_current_value, 2)),
+            'gain_loss': sanitize_float(round(actual_gain_loss, 2)),
+            'return_pct': sanitize_float(round(actual_return_pct, 2))
         },
         'alternatives': alternatives
     })
@@ -160,7 +170,7 @@ def get_portfolio_history():
                 price = ticker_prices.get(date)
                 if price:
                     actual_value += purchase.shares_bought * price
-        actual_values.append(round(actual_value, 2))
+        actual_values.append(sanitize_float(round(actual_value, 2)))
 
         # Alternative portfolio values using pre-computed shares
         for comp_stock in comparison_stocks:
@@ -175,7 +185,7 @@ def get_portfolio_history():
                         comp_price = comp_prices.get(date)
                         if comp_price:
                             alt_value += comp_shares * comp_price
-            alt_values[comp_stock.ticker].append(round(alt_value, 2))
+            alt_values[comp_stock.ticker].append(sanitize_float(round(alt_value, 2)))
 
     return jsonify({
         'dates': [d.isoformat() for d in dates],

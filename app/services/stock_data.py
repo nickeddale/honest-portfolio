@@ -1,4 +1,5 @@
 import yfinance as yf
+import math
 from datetime import datetime, timedelta
 from app import db
 from app.models import PriceCache
@@ -35,8 +36,9 @@ def get_current_prices(tickers: list) -> dict:
             ticker = tickers[0]
             if not data.empty and 'Close' in data.columns:
                 price = float(data['Close'].iloc[-1])
-                prices[ticker] = price
-                _price_cache[ticker] = price
+                if not math.isnan(price):
+                    prices[ticker] = price
+                    _price_cache[ticker] = price
         else:
             # Multiple tickers - data is grouped by ticker
             for ticker in tickers:
@@ -45,8 +47,9 @@ def get_current_prices(tickers: list) -> dict:
                         ticker_data = data[ticker]
                         if not ticker_data.empty and 'Close' in ticker_data.columns:
                             price = float(ticker_data['Close'].iloc[-1])
-                            prices[ticker] = price
-                            _price_cache[ticker] = price
+                            if not math.isnan(price):
+                                prices[ticker] = price
+                                _price_cache[ticker] = price
                 except Exception as e:
                     print(f"Error extracting price for {ticker}: {e}")
 
@@ -97,6 +100,8 @@ def get_price_on_date(ticker: str, date) -> float:
             return None
 
         close_price = float(hist['Close'].iloc[0])
+        if math.isnan(close_price):
+            return None
 
         # Cache the price
         cache_entry = PriceCache(ticker=ticker, date=date, close_price=close_price)
@@ -171,6 +176,10 @@ def get_price_history(ticker: str, start_date, end_date=None) -> dict:
                 for idx, row in hist.iterrows():
                     date = idx.date()
                     close_price = float(row['Close'])
+
+                    # Skip NaN values
+                    if math.isnan(close_price):
+                        continue
 
                     # Only add if not already cached
                     if date not in cached_dates:

@@ -15,7 +15,7 @@
     <link rel="apple-touch-icon" href="/static/icons/icon-192.png">
 
     <!-- Tailwind CSS -->
-    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="/static/css/styles.css">
 
     <!-- RetroUI Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -24,31 +24,6 @@
 
     <!-- Chart.js -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-
-    <style>
-        :root {
-            --font-head: 'Archivo Black', sans-serif;
-            --font-sans: 'Space Grotesk', sans-serif;
-            --background: #f5f5f4;
-            --foreground: #1c1917;
-            --card: #ffffff;
-            --primary: #3b82f6;
-            --primary-foreground: #ffffff;
-            --secondary: #fde047;
-            --border: #1c1917;
-            --muted: #e7e5e4;
-            --muted-foreground: #78716c;
-            --destructive: #ef4444;
-            --success: #22c55e;
-        }
-        body {
-            font-family: var(--font-sans);
-        }
-        h1, h2, h3, h4, h5, h6 {
-            font-family: var(--font-head);
-        }
-        [x-cloak] { display: none !important; }
-    </style>
 </head>
 <body class="bg-[var(--background)] min-h-screen">
     <div id="app" class="container mx-auto px-4 py-8 max-w-6xl">
@@ -63,7 +38,7 @@
             <!-- Guest login section (shown to non-authenticated users) -->
             <div id="guest-login-section" class="hidden flex items-center gap-3">
                 <span class="text-sm text-[var(--muted-foreground)]">Guest Mode</span>
-                <button onclick="authManager.loginWith('google')" class="bg-[var(--primary)] text-[var(--primary-foreground)] border-2 border-[var(--border)] px-4 py-2 rounded shadow-md hover:shadow-none hover:translate-y-0.5 transition-all text-sm">
+                <button class="google-signin-btn bg-[var(--primary)] text-[var(--primary-foreground)] border-2 border-[var(--border)] px-4 py-2 rounded shadow-md hover:shadow-none hover:translate-y-0.5 transition-all text-sm">
                     Sign In
                 </button>
             </div>
@@ -77,7 +52,7 @@
                     </div>
                     <span id="user-name" class="text-sm text-gray-700 hidden sm:inline"></span>
                 </div>
-                <button id="logout-btn" onclick="authManager.logout()" class="text-sm text-gray-500 hover:text-gray-700 flex items-center gap-1">
+                <button id="logout-btn" class="text-sm text-gray-500 hover:text-gray-700 flex items-center gap-1">
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/>
                     </svg>
@@ -99,10 +74,10 @@
                     </div>
                 </div>
                 <div class="flex items-center gap-2">
-                    <button onclick="authManager.loginWith('google')" class="bg-[var(--primary)] text-[var(--primary-foreground)] border-2 border-[var(--border)] px-4 py-2 rounded shadow-md hover:shadow-none hover:translate-y-0.5 transition-all">
+                    <button class="google-signin-btn bg-[var(--primary)] text-[var(--primary-foreground)] border-2 border-[var(--border)] px-4 py-2 rounded shadow-md hover:shadow-none hover:translate-y-0.5 transition-all">
                         Sign Up Free
                     </button>
-                    <button onclick="dismissGuestPrompt()" class="bg-[var(--muted)] text-[var(--foreground)] border-2 border-[var(--border)] px-4 py-2 rounded shadow-md hover:shadow-none hover:translate-y-0.5 transition-all">
+                    <button id="dismiss-guest-prompt-btn" class="bg-[var(--muted)] text-[var(--foreground)] border-2 border-[var(--border)] px-4 py-2 rounded shadow-md hover:shadow-none hover:translate-y-0.5 transition-all">
                         Maybe Later
                     </button>
                 </div>
@@ -122,6 +97,10 @@
                 <button type="button" id="tab-detailed-entry"
                         class="px-4 py-2 text-sm font-medium text-[var(--muted-foreground)] hover:text-[var(--foreground)] border-b-2 border-transparent -mb-px">
                     Detailed Entry
+                </button>
+                <button type="button" id="tab-pdf-upload"
+                        class="px-4 py-2 text-sm font-medium text-[var(--muted-foreground)] hover:text-[var(--foreground)] border-b-2 border-transparent -mb-px">
+                    PDF Upload
                 </button>
             </div>
 
@@ -194,6 +173,24 @@
                 </p>
             </div>
 
+            <!-- PDF Upload Panel -->
+            <div id="panel-pdf-upload" class="hidden">
+                <div id="pdf-drop-zone" class="border-2 border-dashed border-[var(--border)] rounded-lg p-8 text-center cursor-pointer hover:border-[var(--primary)] hover:bg-[var(--primary)]/5 transition-all">
+                    <input type="file" id="pdf-file-input" accept=".pdf" class="hidden">
+                    <label for="pdf-file-input" class="cursor-pointer block">
+                        <svg class="w-12 h-12 mx-auto text-[var(--muted-foreground)] mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"/>
+                        </svg>
+                        <span class="text-[var(--foreground)] font-medium">Click to upload PDF</span>
+                        <span class="block text-sm text-[var(--muted-foreground)] mt-1">or drag and drop</span>
+                    </label>
+                    <p class="text-xs text-[var(--muted-foreground)] mt-4">
+                        Supports brokerage statements from most brokers (max 10MB)
+                    </p>
+                </div>
+                <div id="pdf-upload-status" class="hidden mt-4 p-3 rounded border-2"></div>
+            </div>
+
             <div id="form-error" class="hidden mt-3 p-3 bg-red-100 border-2 border-[var(--destructive)] text-red-700 rounded"></div>
             <div id="form-success" class="hidden mt-3 p-3 bg-green-100 border-2 border-[var(--success)] text-green-700 rounded"></div>
         </section>
@@ -246,7 +243,7 @@
 
         <!-- Share Button (shown when there's data) -->
         <div id="share-button-section" class="hidden mb-8 flex justify-end">
-            <button onclick="openShareModal()"
+            <button id="share-results-btn"
                     class="inline-flex items-center gap-2 bg-[var(--primary)] text-[var(--primary-foreground)] border-2 border-[var(--border)] px-4 py-2 rounded shadow-md hover:shadow-none hover:translate-y-0.5 transition-all">
                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z"/>
@@ -350,7 +347,7 @@
         <!-- Purchase Detail View (hidden by default) -->
         <section id="purchase-detail-section" class="hidden">
             <!-- Back Button -->
-            <button onclick="navigateBack()"
+            <button id="navigate-back-btn"
                     class="flex items-center text-blue-600 hover:text-blue-800 mb-4 font-medium">
                 <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
@@ -471,12 +468,12 @@
     <!-- Share Modal -->
     <div id="share-modal" class="fixed inset-0 z-50 hidden">
         <!-- Backdrop -->
-        <div class="fixed inset-0 bg-black/50 backdrop-blur-sm" onclick="closeShareModal()"></div>
+        <div id="share-modal-backdrop" class="fixed inset-0 bg-black/50 backdrop-blur-sm"></div>
         <!-- Modal Content -->
         <div class="fixed inset-0 flex items-center justify-center p-4">
             <div class="bg-[var(--card)] border-2 border-[var(--border)] rounded shadow-xl max-w-lg w-full p-6 relative">
                 <!-- Close Button -->
-                <button onclick="closeShareModal()" class="absolute top-4 right-4 text-gray-400 hover:text-gray-600">
+                <button id="share-modal-close-btn" class="absolute top-4 right-4 text-gray-400 hover:text-gray-600">
                     <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
                     </svg>
@@ -492,7 +489,7 @@
                 <!-- Share Options -->
                 <div class="space-y-4">
                     <!-- Download PNG -->
-                    <button onclick="downloadShareImage()"
+                    <button id="download-share-btn"
                             class="w-full flex items-center justify-center gap-2 bg-gray-800 text-white border-2 border-[var(--border)] py-3 px-4 rounded shadow-md hover:shadow-none hover:translate-y-0.5 transition-all">
                         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/>
@@ -505,7 +502,7 @@
                         <input type="text" id="share-url" readonly
                                class="flex-1 px-4 py-2 border-2 border-[var(--border)] rounded shadow-md focus:outline-none focus:shadow-sm transition-all bg-gray-50 text-gray-600 text-sm"
                                placeholder="Creating share link...">
-                        <button onclick="copyShareLink()"
+                        <button id="copy-share-link-btn"
                                 class="bg-[var(--primary)] text-[var(--primary-foreground)] border-2 border-[var(--border)] px-4 py-2 rounded shadow-md hover:shadow-none hover:translate-y-0.5 transition-all flex items-center gap-2">
                             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/>
@@ -518,6 +515,56 @@
                 <p class="text-xs text-gray-500 mt-4 text-center">
                     Your share link shows percentages only - no dollar amounts are shared.
                 </p>
+            </div>
+        </div>
+    </div>
+
+    <!-- PDF Trade Confirmation Modal -->
+    <div id="pdf-confirm-modal" class="fixed inset-0 z-50 hidden">
+        <div id="pdf-modal-backdrop" class="fixed inset-0 bg-black/50 backdrop-blur-sm"></div>
+        <div class="fixed inset-0 flex items-center justify-center p-4 overflow-y-auto">
+            <div class="bg-[var(--card)] border-2 border-[var(--border)] rounded shadow-xl max-w-4xl w-full p-6 relative max-h-[90vh] overflow-y-auto">
+                <button id="pdf-modal-close" class="absolute top-4 right-4 text-gray-400 hover:text-gray-600">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                    </svg>
+                </button>
+                <h3 class="text-xl font-semibold text-gray-900 mb-2">Review Extracted Trades</h3>
+                <p class="text-sm text-[var(--muted-foreground)] mb-4">
+                    Review the trades extracted from your PDF. You can edit values before saving.
+                </p>
+                <div id="pdf-extraction-notes" class="hidden mb-4 p-3 bg-yellow-50 border-2 border-yellow-200 rounded text-sm"></div>
+                <div class="overflow-x-auto">
+                    <table class="min-w-full border-2 border-[var(--border)]">
+                        <thead class="bg-[var(--primary)] text-[var(--primary-foreground)]">
+                            <tr>
+                                <th class="px-3 py-2 text-left text-xs font-medium uppercase">
+                                    <input type="checkbox" id="pdf-select-all" class="w-4 h-4">
+                                </th>
+                                <th class="px-3 py-2 text-left text-xs font-medium uppercase">Ticker</th>
+                                <th class="px-3 py-2 text-left text-xs font-medium uppercase">Date</th>
+                                <th class="px-3 py-2 text-right text-xs font-medium uppercase">Shares</th>
+                                <th class="px-3 py-2 text-right text-xs font-medium uppercase">Price</th>
+                                <th class="px-3 py-2 text-right text-xs font-medium uppercase">Total</th>
+                                <th class="px-3 py-2 text-center text-xs font-medium uppercase">Status</th>
+                            </tr>
+                        </thead>
+                        <tbody id="pdf-trades-tbody" class="divide-y divide-gray-200 bg-white"></tbody>
+                    </table>
+                </div>
+                <div class="mt-4 flex justify-between items-center">
+                    <div class="text-sm text-[var(--muted-foreground)]">
+                        <span id="pdf-selected-count">0</span> of <span id="pdf-total-count">0</span> trades selected
+                    </div>
+                    <div class="flex gap-3">
+                        <button id="pdf-cancel-btn" class="bg-[var(--muted)] text-[var(--foreground)] border-2 border-[var(--border)] px-4 py-2 rounded shadow-md hover:shadow-none hover:translate-y-0.5 transition-all">
+                            Cancel
+                        </button>
+                        <button id="pdf-save-btn" class="bg-[var(--primary)] text-[var(--primary-foreground)] border-2 border-[var(--border)] px-4 py-2 rounded shadow-md hover:shadow-none hover:translate-y-0.5 transition-all disabled:opacity-50 disabled:cursor-not-allowed">
+                            Save Selected Trades
+                        </button>
+                    </div>
+                </div>
             </div>
         </div>
     </div>

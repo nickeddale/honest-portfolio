@@ -19,11 +19,11 @@ CORS_ORIGINS = os.environ.get('CORS_ORIGINS', 'http://localhost:5000,http://127.
 # Content Security Policy - allow CDN resources
 CSP = {
     'default-src': "'self'",
-    'script-src': ["'self'", "'unsafe-inline'", "'unsafe-eval'", "cdn.tailwindcss.com", "cdn.jsdelivr.net"],
-    'style-src': ["'self'", "'unsafe-inline'", "cdn.tailwindcss.com", "fonts.googleapis.com"],
+    'script-src': ["'self'", "'unsafe-inline'", "'unsafe-eval'", "cdn.jsdelivr.net"],
+    'style-src': ["'self'", "'unsafe-inline'", "fonts.googleapis.com"],
     'font-src': ["'self'", "fonts.gstatic.com"],
     'img-src': ["'self'", "data:", "https:"],
-    'connect-src': ["'self'"],
+    'connect-src': ["'self'", "cdn.jsdelivr.net"],
 }
 
 
@@ -81,6 +81,7 @@ def create_app():
     from app.routes.test_auth import test_auth_bp
     from app.routes.share import share_bp
     from app.routes.guest import guest_bp
+    from app.routes.pdf_upload import pdf_upload_bp
 
     app.register_blueprint(purchases_bp, url_prefix='/api')
     app.register_blueprint(portfolio_bp, url_prefix='/api')
@@ -89,6 +90,7 @@ def create_app():
     app.register_blueprint(test_auth_bp, url_prefix='/api')
     app.register_blueprint(share_bp, url_prefix='/api')
     app.register_blueprint(guest_bp, url_prefix='/api')
+    app.register_blueprint(pdf_upload_bp, url_prefix='/api')
 
     # Apply rate limits to specific blueprints
     # Guest/public endpoints: more restrictive (100/hour)
@@ -99,6 +101,8 @@ def create_app():
     # Auth endpoints: 10/minute (prevent brute force) - unless in test mode
     if not app.config.get('ENABLE_TEST_AUTH'):
         limiter.limit("10 per minute")(auth_bp)
+    # PDF uploads: 20/hour (controls OpenAI API costs)
+    limiter.limit("20 per hour")(pdf_upload_bp)
 
     # CSRF and rate limit exemptions for test endpoints
     # Only exempt test endpoints at blueprint level for development only.
