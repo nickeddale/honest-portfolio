@@ -137,18 +137,21 @@ test.describe('Authenticated User Mode', () => {
     await expect(purchasesList).toBeVisible({ timeout: 5000 });
     await expect(purchasesList.locator('text=AAPL').first()).toBeVisible({ timeout: 5000 });
 
-    // Navigate to purchase detail using page.evaluate() to call the function directly
-    // This bypasses CSP restrictions on onclick handlers
-    await page.evaluate(() => {
-      const row = document.querySelector('#purchases-list > div[onclick]');
-      if (row) {
-        const onclick = row.getAttribute('onclick');
-        const match = onclick?.match(/navigateToPurchase\((\d+)\)/);
-        if (match) {
-          (window as any).navigateToPurchase(parseInt(match[1]));
-        }
-      }
-    });
+    // Click on the purchase item to navigate to detail
+    // Uses event delegation with data-purchase-id attribute
+    const purchaseItem = page.locator('.purchase-item').first();
+    await purchaseItem.waitFor({ state: 'visible', timeout: 5000 });
+    await purchaseItem.click();
+
+    // Wait for the navigation function to execute and show detail section
+    // The hidden class should be removed from #purchase-detail-section
+    await page.waitForFunction(
+      () => {
+        const section = document.getElementById('purchase-detail-section');
+        return section && !section.classList.contains('hidden');
+      },
+      { timeout: 10000 }
+    );
 
     // Wait for detail view to load - first the section, then the content
     await expect(page.locator('#purchase-detail-section')).toBeVisible({ timeout: 5000 });
@@ -216,21 +219,24 @@ test.describe('Authenticated User Mode', () => {
       { timeout: 10000 }
     );
 
-    // Call deletePurchase() directly using page.evaluate() to bypass CSP restrictions
-    await page.evaluate(() => {
-      const btn = document.querySelector('#purchases-list button[onclick*="deletePurchase"]');
-      if (btn) {
-        const onclick = btn.getAttribute('onclick');
-        const match = onclick?.match(/deletePurchase\((\d+)\)/);
-        if (match) {
-          (window as any).deletePurchase(parseInt(match[1]));
-        }
-      }
-    });
+    // Click the delete button directly
+    // Uses event delegation with data-delete-id attribute
+    const deleteBtn = page.locator('.delete-purchase-btn').first();
+    await deleteBtn.waitFor({ state: 'visible', timeout: 5000 });
+    await deleteBtn.click();
 
-    // Wait for confirmation modal to appear and confirm
+    // Wait for confirmation modal to appear (hidden class removed)
+    await page.waitForFunction(
+      () => {
+        const modal = document.getElementById('confirmation-modal');
+        return modal && !modal.classList.contains('hidden');
+      },
+      { timeout: 5000 }
+    );
+
+    // Wait for confirm button to be visible and click it
     const confirmButton = page.locator('#modal-confirm');
-    await expect(confirmButton).toBeVisible({ timeout: 3000 });
+    await expect(confirmButton).toBeVisible({ timeout: 5000 });
     await confirmButton.click();
 
     // Wait for the delete response
