@@ -1,0 +1,67 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Custom CSS Variables (theme) */
+:root {
+    --font-head: 'Archivo Black', sans-serif;
+    --font-sans: 'Space Grotesk', sans-serif;
+    --background: #f5f5f4;
+    --foreground: #1c1917;
+    --card: #ffffff;
+    --primary: #3b82f6;
+    --primary-foreground: #ffffff;
+    --secondary: #fde047;
+    --border: #1c1917;
+    --muted: #e7e5e4;
+    --muted-foreground: #78716c;
+    --destructive: #ef4444;
+    --success: #22c55e;
+}
+
+body {
+    font-family: var(--font-sans);
+}
+
+h1, h2, h3, h4, h5, h6 {
+    font-family: var(--font-head);
+}
+
+[x-cloak] { display: none !important; }
+
+/* competitive-analysis.html specific styles */
+.prose table {
+    width: 100%;
+    border-collapse: collapse;
+    border: 2px solid var(--border);
+    box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1);
+}
+.prose th, .prose td {
+    border: 2px solid var(--border);
+    padding: 0.5rem 0.75rem;
+    text-align: left;
+}
+.prose th {
+    background-color: var(--primary);
+    color: var(--primary-foreground);
+    font-weight: 600;
+}
+.prose tr:hover {
+    background-color: var(--muted);
+}
+.prose pre {
+    background-color: #1f2937;
+    color: #e5e7eb;
+    padding: 1rem;
+    border: 2px solid var(--border);
+    border-radius: 0.5rem;
+    overflow-x: auto;
+    font-family: monospace;
+    font-size: 0.75rem;
+    line-height: 1.5;
+}
+.highlight {
+    background-color: #fef3c7;
+    padding: 0.125rem 0.25rem;
+    border-radius: 0.25rem;
+}
