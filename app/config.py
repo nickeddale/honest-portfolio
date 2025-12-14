@@ -29,8 +29,11 @@ class Config:
     WTF_CSRF_ENABLED = True
     WTF_CSRF_TIME_LIMIT = 3600  # 1 hour expiry
 
-    # Request size limit (1MB max)
-    MAX_CONTENT_LENGTH = 1 * 1024 * 1024
+    # Request size limit (10MB max for PDF uploads)
+    MAX_CONTENT_LENGTH = 10 * 1024 * 1024
+
+    # OpenAI API
+    OPENAI_API_KEY = os.environ.get('OPENAI_API_KEY')
 
     # Test auth (dev mode)
     ENABLE_TEST_AUTH = os.environ.get('ENABLE_TEST_AUTH', 'False').lower() == 'true'

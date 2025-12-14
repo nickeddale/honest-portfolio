@@ -56,10 +56,11 @@ def logout():
 
 
 @auth_bp.route('/auth/me')
-@login_required
 def get_current_user():
-    """Get current user's public info."""
-    return jsonify(current_user.to_dict_public())
+    """Get current user's public info or null if not authenticated."""
+    if current_user.is_authenticated:
+        return jsonify(current_user.to_dict_public())
+    return jsonify(None), 200
 
 
 @auth_bp.route('/auth/me/profile')

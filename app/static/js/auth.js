@@ -288,3 +288,58 @@ class AuthManager {
 
 // Create global auth manager instance
 const authManager = new AuthManager();
+
+// Login page initialization (runs only on login.html)
+function initLoginPage() {
+    // Check for error in URL
+    const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.get('error')) {
+        const errorMessage = document.getElementById('error-message');
+        if (errorMessage) {
+            errorMessage.classList.remove('hidden');
+        }
+    }
+
+    // Check dev mode and show dev login if enabled, setup event listeners
+    (async function() {
+        const devMode = await authManager.checkDevMode();
+        if (devMode) {
+            const devLoginBtn = document.getElementById('dev-login-btn');
+            if (devLoginBtn) {
+                devLoginBtn.classList.remove('hidden');
+            }
+        }
+
+        // Check if already logged in
+        await authManager.init();
+        if (authManager.isAuthenticated()) {
+            window.location.href = '/';
+            return;
+        }
+
+        // Add event listeners after init
+        const googleLoginBtn = document.getElementById('google-login-btn');
+        if (googleLoginBtn) {
+            googleLoginBtn.addEventListener('click', () => authManager.loginWith('google'));
+        }
+
+        const devLoginBtn = document.getElementById('dev-login-btn');
+        if (devLoginBtn) {
+            devLoginBtn.addEventListener('click', () => authManager.devLogin());
+        }
+    })();
+}
+
+// Auto-initialize login page if we're on login.html
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', () => {
+        if (window.location.pathname === '/login.html' || window.location.pathname.endsWith('/login.html')) {
+            initLoginPage();
+        }
+    });
+} else {
+    // DOM already loaded
+    if (window.location.pathname === '/login.html' || window.location.pathname.endsWith('/login.html')) {
+        initLoginPage();
+    }
+}

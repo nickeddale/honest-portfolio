@@ -1,9 +1,9 @@
-const CACHE_NAME = 'honest-portfolio-v1';
+const CACHE_NAME = 'honest-portfolio-v3';
 const STATIC_ASSETS = [
     '/',
     '/static/index.html',
     '/static/js/app.js',
-    'https://cdn.tailwindcss.com',
+    '/static/css/styles.css',
     'https://cdn.jsdelivr.net/npm/chart.js'
 ];
 
@@ -30,8 +30,11 @@ self.addEventListener('activate', event => {
 
 // Fetch event - Network first, fall back to cache
 self.addEventListener('fetch', event => {
-    // Skip non-GET requests
-    if (event.request.method !== 'GET') return;
+    // Pass non-GET requests through to the network
+    if (event.request.method !== 'GET') {
+        event.respondWith(fetch(event.request));
+        return;
+    }
 
     // For API requests, always go to network
     if (event.request.url.includes('/api/')) {
