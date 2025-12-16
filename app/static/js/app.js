@@ -10,6 +10,8 @@ let chart = null;
 // PDF Upload State
 let extractedTrades = [];
 let selectedTradeIds = new Set();
+// PDF Upload Quota State
+let pdfUploadQuota = null;
 
 // Router state
 let currentView = 'portfolio'; // 'portfolio' | 'purchase-detail'
@@ -154,6 +156,9 @@ async function init() {
 
     // Initialize PDF upload
     initPdfUpload();
+
+    // Fetch PDF upload quota
+    await fetchPdfUploadQuota();
 
     // Register service worker
     if ('serviceWorker' in navigator) {
@@ -1472,6 +1477,72 @@ function renderSharePreview() {
 
 // ==================== PDF Upload ====================
 
+async function fetchPdfUploadQuota() {
+    if (!authManager.isAuthenticated()) {
+        pdfUploadQuota = null;
+        updatePdfQuotaUI();
+        return;
+    }
+
+    try {
+        const response = await authManager.authFetch(`${API_BASE}/uploads/pdf/quota`);
+        if (response.ok) {
+            pdfUploadQuota = await response.json();
+        } else {
+            pdfUploadQuota = null;
+        }
+    } catch (error) {
+        console.error('Error fetching PDF quota:', error);
+        pdfUploadQuota = null;
+    }
+
+    updatePdfQuotaUI();
+}
+
+function updatePdfQuotaUI() {
+    const display = document.getElementById('pdf-quota-display');
+    const dropZone = document.getElementById('pdf-drop-zone');
+    const fileInput = document.getElementById('pdf-file-input');
+
+    if (!display) return;
+
+    if (!authManager.isAuthenticated() || !pdfUploadQuota) {
+        display.classList.add('hidden');
+        return;
+    }
+
+    display.classList.remove('hidden');
+
+    const { remaining, limit } = pdfUploadQuota;
+    const quotaText = display.querySelector('.quota-text');
+
+    if (remaining === 0) {
+        // Exhausted - disable upload
+        quotaText.textContent = `Daily limit reached (${limit}/${limit})`;
+        display.classList.remove('text-gray-600');
+        display.classList.add('text-red-600');
+
+        if (dropZone) {
+            dropZone.classList.add('opacity-50', 'pointer-events-none');
+        }
+        if (fileInput) {
+            fileInput.disabled = true;
+        }
+    } else {
+        // Has remaining uploads
+        quotaText.textContent = `${remaining} of ${limit} uploads remaining today`;
+        display.classList.remove('text-red-600');
+        display.classList.add('text-gray-600');
+
+        if (dropZone) {
+            dropZone.classList.remove('opacity-50', 'pointer-events-none');
+        }
+        if (fileInput) {
+            fileInput.disabled = false;
+        }
+    }
+}
+
 function initPdfUpload() {
     const fileInput = document.getElementById('pdf-file-input');
     const dropZone = document.getElementById('pdf-drop-zone');
@@ -1548,6 +1619,12 @@ async function handlePdfFile(file) {
         return;
     }
 
+    // Check quota before attempting upload
+    if (pdfUploadQuota && pdfUploadQuota.remaining <= 0) {
+        showPdfStatus('Daily upload limit reached. Try again tomorrow.', 'error');
+        return;
+    }
+
     // Validate file
     if (file.type !== 'application/pdf') {
         showPdfStatus('Please upload a PDF file', 'error');
@@ -1579,6 +1656,10 @@ async function handlePdfFile(file) {
         const result = await response.json();
 
         if (!response.ok) {
+            if (response.status === 429) {
+                await fetchPdfUploadQuota();  // Refresh quota
+                throw new Error(result.error || 'Daily upload limit reached');
+            }
             throw new Error(result.error || 'Failed to extract trades');
         }
 
@@ -1598,9 +1679,14 @@ async function handlePdfFile(file) {
         showPdfStatus(`Found ${result.trades.length} trade(s). Review and confirm below.`, 'success');
         openPdfConfirmModal(result);
 
+        // Refresh quota after successful upload
+        await fetchPdfUploadQuota();
+
     } catch (error) {
         console.error('PDF upload error:', error);
         showPdfStatus(error.message || 'Failed to process PDF', 'error');
+        // Refresh quota after error (in case it was a 429)
+        await fetchPdfUploadQuota();
     }
 
     // Reset file input

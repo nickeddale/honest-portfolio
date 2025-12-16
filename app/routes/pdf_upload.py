@@ -4,9 +4,9 @@ PDF upload routes for trade extraction.
 
 from flask import Blueprint, request, jsonify, current_app
 from flask_login import login_required, current_user
-from datetime import datetime
+from datetime import datetime, date, timedelta
 from app import db
-from app.models import Purchase
+from app.models import Purchase, PdfUploadLog
 from app.services.pdf_extractor import extract_trades_from_pdf
 from app.services.stock_data import validate_ticker, is_trading_day, invalidate_price_cache
 
@@ -21,6 +21,47 @@ def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
 
+def get_user_upload_count_today(user_id: int) -> int:
+    """Get the number of PDF uploads for a user today (UTC)."""
+    today_start = datetime.combine(date.today(), datetime.min.time())
+    return PdfUploadLog.query.filter(
+        PdfUploadLog.user_id == user_id,
+        PdfUploadLog.uploaded_at >= today_start
+    ).count()
+
+
+def _get_next_reset_time_iso() -> str:
+    """Get the ISO timestamp for when the quota resets (midnight UTC)."""
+    tomorrow = date.today() + timedelta(days=1)
+    reset_time = datetime.combine(tomorrow, datetime.min.time())
+    return reset_time.isoformat() + 'Z'
+
+
+@pdf_upload_bp.route('/uploads/pdf/quota', methods=['GET'])
+@login_required
+def get_upload_quota():
+    """
+    Get the user's remaining PDF upload quota for today.
+
+    Response: {
+        used: number,
+        limit: number,
+        remaining: number,
+        resets_at: string (ISO datetime)
+    }
+    """
+    limit = current_app.config.get('PDF_DAILY_UPLOAD_LIMIT', 3)
+    used = get_user_upload_count_today(current_user.id)
+    remaining = max(0, limit - used)
+
+    return jsonify({
+        'used': used,
+        'limit': limit,
+        'remaining': remaining,
+        'resets_at': _get_next_reset_time_iso()
+    }), 200
+
+
 @pdf_upload_bp.route('/uploads/pdf/extract', methods=['POST'])
 @login_required
 def extract_trades():
@@ -31,6 +72,27 @@ def extract_trades():
     Request: multipart/form-data with 'file' field
     Response: {trades: [...], total_pages: N, notes: [...]}
     """
+    # Check daily upload limit FIRST (before any processing)
+    limit = current_app.config.get('PDF_DAILY_UPLOAD_LIMIT', 3)
+    used = get_user_upload_count_today(current_user.id)
+
+    if used >= limit:
+        return jsonify({
+            'error': 'Daily upload limit reached',
+            'code': 'QUOTA_EXCEEDED',
+            'quota': {
+                'used': used,
+                'limit': limit,
+                'remaining': 0,
+                'resets_at': _get_next_reset_time_iso()
+            }
+        }), 429
+
+    # Log this upload attempt IMMEDIATELY (counts toward limit)
+    upload_log = PdfUploadLog(user_id=current_user.id)
+    db.session.add(upload_log)
+    db.session.commit()
+
     # Check if file is in request
     if 'file' not in request.files:
         return jsonify({'error': 'No file provided'}), 400

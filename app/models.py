@@ -159,6 +159,25 @@ class PortfolioShare(db.Model):
         }
 
 
+class PdfUploadLog(db.Model):
+    """Tracks PDF upload attempts per user for daily rate limiting."""
+    __tablename__ = 'pdf_upload_logs'
+
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    uploaded_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
+    file_size_bytes = db.Column(db.Integer, nullable=True)
+    success = db.Column(db.Boolean, nullable=True)
+
+    # Relationships
+    user = db.relationship('User', backref=db.backref('pdf_uploads', lazy=True))
+
+    # Index for efficient daily count queries
+    __table_args__ = (
+        db.Index('ix_pdf_upload_logs_user_date', 'user_id', 'uploaded_at'),
+    )
+
+
 def seed_comparison_stocks():
     """Seed the default comparison stocks if they don't exist."""
     default_stocks = [

@@ -35,6 +35,9 @@ class Config:
     # OpenAI API
     OPENAI_API_KEY = os.environ.get('OPENAI_API_KEY')
 
+    # PDF upload limits
+    PDF_DAILY_UPLOAD_LIMIT = int(os.environ.get('PDF_DAILY_UPLOAD_LIMIT', '3'))
+
     # Test auth (dev mode)
     ENABLE_TEST_AUTH = os.environ.get('ENABLE_TEST_AUTH', 'False').lower() == 'true'
 
