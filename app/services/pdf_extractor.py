@@ -14,18 +14,37 @@ from flask import current_app
 class PDFTradeExtractor:
     """Extracts trade data from PDF documents using GPT-4 Vision."""
 
-    EXTRACTION_PROMPT = """You are a financial document analyzer. Extract all stock BUY transactions from this brokerage statement or trade confirmation.
+    EXTRACTION_PROMPT = """You are a financial document analyzer specializing in brokerage statements and trade confirmations.
+
+Extract all stock BUY transactions from this document.
 
 For each BUY trade, extract:
-- ticker: Stock symbol (e.g., AAPL, TSLA)
-- purchase_date: Date of the trade in YYYY-MM-DD format
-- quantity: Number of shares bought (positive number)
-- price_per_share: Price per share in USD
-- total_amount: Total transaction amount in USD (optional)
+- ticker: The standard stock ticker symbol (e.g., AAPL, TSLA, MSFT)
+  IMPORTANT: If the document shows a company name instead of ticker, convert it:
+  - "Apple Inc." or "APPLE INC" → AAPL
+  - "Microsoft Corporation" or "MICROSOFT CORP" → MSFT
+  - "NVIDIA Corporation" or "NVIDIA CORP" → NVDA
+  - "Tesla Inc." or "TESLA INC" → TSLA
+  - "Amazon.com Inc." or "AMAZON COM INC" → AMZN
+  - "Alphabet Inc." or "GOOGLE" → GOOGL
+  - "Meta Platforms" or "META PLATFORMS INC" → META
+  - "Berkshire Hathaway" → BRK.B
+  - "JPMorgan Chase" → JPM
+  - "Johnson & Johnson" → JNJ
+  For other companies, use your knowledge to provide the correct NYSE/NASDAQ ticker.
 
-Only extract BUY transactions, not sells.
+- purchase_date: Date of the trade in YYYY-MM-DD format
+- quantity: Number of shares bought (can be fractional, e.g., 0.5 shares)
+- price_per_share: Price per share in USD (exclude fees/commissions)
+- total_amount: Total transaction amount in USD (optional, exclude fees)
+
+Rules:
+- Only extract BUY transactions (not sells, dividends, or transfers)
+- Be precise with numbers - do not round
+- If a ticker symbol is already shown (like "AAPL"), use it directly
+- Ignore mutual funds, ETFs with non-standard symbols unless clearly identifiable
+
 Return a JSON object with a "trades" array. If no trades found, return {"trades": []}.
-Be precise with numbers - do not round.
 
 Example output:
 {
@@ -38,7 +57,7 @@ Example output:
             "total_amount": 1947.75
         }
     ],
-    "notes": "Extracted from monthly statement"
+    "notes": "Extracted from Fidelity monthly statement"
 }"""
 
     def __init__(self):
