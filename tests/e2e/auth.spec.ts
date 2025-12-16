@@ -73,27 +73,31 @@ test.describe('Authentication', () => {
     // Add a guest purchase via the UI form
     await page.fill('#ticker-quick', 'AAPL');
 
-    // Use a recent date for the purchase
+    // Use a recent weekday for the purchase (avoid weekends)
+    // Start with 30 days ago and find the next weekday
     const recentDate = new Date();
-    recentDate.setDate(recentDate.getDate() - 30); // 30 days ago
+    recentDate.setDate(recentDate.getDate() - 30);
+
+    // If it's a weekend, move to the previous Friday
+    const dayOfWeek = recentDate.getDay();
+    if (dayOfWeek === 0) { // Sunday
+      recentDate.setDate(recentDate.getDate() - 2);
+    } else if (dayOfWeek === 6) { // Saturday
+      recentDate.setDate(recentDate.getDate() - 1);
+    }
+
     const dateString = recentDate.toISOString().split('T')[0];
     await page.fill('#purchase-date-quick', dateString);
 
     await page.fill('#amount-quick', '1000');
 
-    // Wait for any API calls after submission (or localStorage update)
-    const responsePromise = page.waitForResponse(
-      response => response.url().includes('/api/') && response.status() === 200,
-      { timeout: 10000 }
-    ).catch(() => null); // Don't fail if no API call is made (guest mode uses localStorage)
-
-    // Submit the form
-    await page.click('#submit-btn-quick');
-
-    // Wait for the response or localStorage update
-    await Promise.race([
-      responsePromise,
-      page.waitForTimeout(1000)
+    // Submit the form and wait for the guest validation API call to complete
+    const [response] = await Promise.all([
+      page.waitForResponse(
+        response => response.url().includes('/api/guest/purchases/validate') && response.status() === 200,
+        { timeout: 10000 }
+      ),
+      page.click('#submit-btn-quick')
     ]);
 
     // Wait for purchases section to become visible
@@ -107,8 +111,11 @@ test.describe('Authentication', () => {
     const purchasesList = page.locator('#purchases-list');
     await expect(purchasesList).toBeVisible();
 
-    // Verify AAPL ticker is visible in the list
-    await expect(purchasesList.locator('text=AAPL')).toBeVisible({ timeout: 5000 });
+    // Wait for the purchases list to update - check that "No purchases yet" is gone
+    await expect(purchasesList).not.toContainText('No purchases yet', { timeout: 10000 });
+
+    // Now verify AAPL ticker is visible in the DOM
+    await expect(purchasesList.locator('text=AAPL')).toBeVisible({ timeout: 10000 });
 
     // Verify purchase amount is visible
     await expect(purchasesList).toContainText('$1,000');
@@ -138,8 +145,8 @@ test.describe('Authentication', () => {
     await expect(purchasesSection).toBeVisible({ timeout: 5000 });
     await purchasesSection.scrollIntoViewIfNeeded();
 
-    // Verify AAPL ticker is still visible in the purchases list
-    await expect(purchasesList.locator('text=AAPL').first()).toBeVisible({ timeout: 5000 });
+    // Verify AAPL ticker is still visible in the purchases list after migration
+    await expect(purchasesList.locator('text=AAPL').first()).toBeVisible({ timeout: 10000 });
 
     // Verify purchase amount is still visible
     await expect(purchasesList).toContainText('$1,000');
