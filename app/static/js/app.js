@@ -919,7 +919,7 @@ function initStaticEventListeners() {
 
     // Google sign-in buttons (multiple)
     document.querySelectorAll('.google-signin-btn').forEach(btn => {
-        btn.addEventListener('click', () => authManager.loginWith('google'));
+        btn.addEventListener('click', () => window.location.href = '/login.html');
     });
 
     // Event delegation for purchases list (dynamic content)
