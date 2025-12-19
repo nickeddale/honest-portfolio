@@ -46,6 +46,10 @@
             <!-- User Profile (hidden until logged in) -->
             <div id="user-section" class="hidden flex items-center gap-4">
                 <div class="flex items-center gap-2">
+                    <!-- Premium Badge (hidden by default) -->
+                    <div id="premium-badge" class="hidden px-2 py-0.5 bg-gradient-to-r from-yellow-400 to-orange-500 text-white text-xs font-bold rounded border border-yellow-500">
+                        PRO
+                    </div>
                     <div id="user-avatar" class="w-8 h-8 rounded-full bg-blue-600 flex items-center justify-center text-white text-sm font-medium overflow-hidden">
                         <span id="user-initials"></span>
                         <img id="user-picture" class="hidden w-full h-full object-cover" alt="Profile">
@@ -572,6 +576,77 @@
                         </button>
                     </div>
                 </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Upgrade to Premium Modal -->
+    <div id="upgrade-modal" class="fixed inset-0 z-50 hidden">
+        <div id="upgrade-modal-backdrop" class="fixed inset-0 bg-black/50 backdrop-blur-sm"></div>
+        <div class="fixed inset-0 flex items-center justify-center p-4">
+            <div class="bg-[var(--card)] border-2 border-[var(--border)] rounded shadow-xl max-w-md w-full p-6 relative">
+                <!-- Close Button -->
+                <button id="upgrade-modal-close" class="absolute top-4 right-4 text-gray-400 hover:text-gray-600">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                    </svg>
+                </button>
+
+                <!-- Premium Badge -->
+                <div class="text-center mb-6">
+                    <div class="w-16 h-16 bg-gradient-to-br from-yellow-400 to-orange-500 border-2 border-[var(--border)] rounded-full flex items-center justify-center mx-auto mb-4 shadow-md">
+                        <svg class="w-8 h-8 text-white" fill="currentColor" viewBox="0 0 24 24">
+                            <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
+                        </svg>
+                    </div>
+                    <h3 class="text-2xl font-bold text-[var(--foreground)]">Upgrade to Premium</h3>
+                    <p class="text-[var(--muted-foreground)] mt-2">Unlock the full power of Honest Portfolio</p>
+                </div>
+
+                <!-- Features List -->
+                <div class="space-y-4 mb-6">
+                    <div class="flex items-start gap-3">
+                        <svg class="w-6 h-6 text-green-500 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+                        </svg>
+                        <div>
+                            <p class="font-medium text-[var(--foreground)]">Unlimited PDF Uploads</p>
+                            <p class="text-sm text-[var(--muted-foreground)]">Upload as many brokerage statements as you need</p>
+                        </div>
+                    </div>
+                    <div class="flex items-start gap-3">
+                        <svg class="w-6 h-6 text-green-500 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+                        </svg>
+                        <div>
+                            <p class="font-medium text-[var(--foreground)]">Custom Comparison Stocks</p>
+                            <p class="text-sm text-[var(--muted-foreground)]">Add your own benchmark stocks to compare against</p>
+                        </div>
+                    </div>
+                    <div class="flex items-start gap-3">
+                        <svg class="w-6 h-6 text-green-500 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+                        </svg>
+                        <div>
+                            <p class="font-medium text-[var(--foreground)]">Priority Support</p>
+                            <p class="text-sm text-[var(--muted-foreground)]">Get help when you need it</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Upgrade trigger context (dynamically updated) -->
+                <div id="upgrade-trigger-context" class="hidden bg-yellow-50 border-2 border-yellow-200 rounded p-3 mb-6 text-sm text-yellow-800">
+                    <!-- Filled dynamically based on what triggered the modal -->
+                </div>
+
+                <!-- Upgrade Button -->
+                <button id="upgrade-now-btn" class="w-full bg-gradient-to-r from-yellow-400 to-orange-500 text-white border-2 border-[var(--border)] py-3 px-6 rounded shadow-md hover:shadow-none hover:translate-y-0.5 transition-all font-bold text-lg">
+                    Upgrade Now - Free
+                </button>
+
+                <p class="text-xs text-center text-[var(--muted-foreground)] mt-4">
+                    No credit card required. Instant activation.
+                </p>
             </div>
         </div>
     </div>

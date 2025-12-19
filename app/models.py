@@ -13,6 +13,8 @@ class User(UserMixin, db.Model):
     profile_picture = db.Column(db.String(500))
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     last_login = db.Column(db.DateTime, default=datetime.utcnow)
+    is_premium = db.Column(db.Boolean, default=False, nullable=False)
+    premium_since = db.Column(db.DateTime, nullable=True)
 
     # Relationships
     auth_accounts = db.relationship("UserAuthAccount", backref="user",
@@ -25,7 +27,8 @@ class User(UserMixin, db.Model):
         return {
             'id': self.id,
             'name': self.name,
-            'profile_picture': self.profile_picture
+            'profile_picture': self.profile_picture,
+            'is_premium': self.is_premium
         }
 
     def to_dict_profile(self):
@@ -37,6 +40,8 @@ class User(UserMixin, db.Model):
             'profile_picture': self.profile_picture,
             'created_at': self.created_at.isoformat() if self.created_at else None,
             'last_login': self.last_login.isoformat() if self.last_login else None,
+            'is_premium': self.is_premium,
+            'premium_since': self.premium_since.isoformat() if self.premium_since else None,
             'providers': [acc.provider for acc in self.auth_accounts]
         }
 

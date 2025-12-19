@@ -151,6 +151,9 @@ async function init() {
     // Initialize modal event listeners
     initModalListeners();
 
+    // Initialize upgrade modal
+    initUpgradeModal();
+
     // Initialize static event listeners
     initStaticEventListeners();
 
@@ -180,6 +183,12 @@ function updateUserUI() {
         }
         if (guestLoginSection) {
             guestLoginSection.classList.remove('hidden');
+        }
+
+        // Hide premium badge
+        const premiumBadge = document.getElementById('premium-badge');
+        if (premiumBadge) {
+            premiumBadge.classList.add('hidden');
         }
         return;
     }
@@ -218,6 +227,16 @@ function updateUserUI() {
                 .toUpperCase()
                 .slice(0, 2);
             userInitials.textContent = initials;
+        }
+    }
+
+    // Show/hide premium badge based on user's premium status
+    const premiumBadge = document.getElementById('premium-badge');
+    if (premiumBadge) {
+        if (user && user.is_premium) {
+            premiumBadge.classList.remove('hidden');
+        } else {
+            premiumBadge.classList.add('hidden');
         }
     }
 }
@@ -868,6 +887,110 @@ function initModalListeners() {
     });
 }
 
+// ==================== Upgrade Modal ====================
+
+function initUpgradeModal() {
+    const backdrop = document.getElementById('upgrade-modal-backdrop');
+    const closeBtn = document.getElementById('upgrade-modal-close');
+    const upgradeBtn = document.getElementById('upgrade-now-btn');
+
+    if (backdrop) backdrop.addEventListener('click', closeUpgradeModal);
+    if (closeBtn) closeBtn.addEventListener('click', closeUpgradeModal);
+    if (upgradeBtn) upgradeBtn.addEventListener('click', handleUpgrade);
+
+    // Close on Escape key
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') {
+            const modal = document.getElementById('upgrade-modal');
+            if (modal && !modal.classList.contains('hidden')) {
+                closeUpgradeModal();
+            }
+        }
+    });
+}
+
+function openUpgradeModal(context = null) {
+    const modal = document.getElementById('upgrade-modal');
+    const contextDiv = document.getElementById('upgrade-trigger-context');
+
+    if (context && contextDiv) {
+        contextDiv.textContent = context;
+        contextDiv.classList.remove('hidden');
+    } else if (contextDiv) {
+        contextDiv.classList.add('hidden');
+    }
+
+    if (modal) {
+        modal.classList.remove('hidden');
+        document.body.style.overflow = 'hidden';
+    }
+}
+
+function closeUpgradeModal() {
+    const modal = document.getElementById('upgrade-modal');
+    if (modal) {
+        modal.classList.add('hidden');
+        document.body.style.overflow = '';
+    }
+}
+
+async function handleUpgrade() {
+    const upgradeBtn = document.getElementById('upgrade-now-btn');
+    if (!upgradeBtn) return;
+
+    const originalText = upgradeBtn.textContent;
+
+    upgradeBtn.disabled = true;
+    upgradeBtn.textContent = 'Processing...';
+
+    try {
+        const response = await authManager.authFetch(`${API_BASE}/upgrade`, {
+            method: 'POST'
+        });
+
+        const result = await response.json();
+
+        if (!response.ok) {
+            throw new Error(result.error || 'Failed to upgrade');
+        }
+
+        // Refresh user data to update premium status
+        await authManager.refreshCurrentUser();
+
+        // Redirect to thank you page
+        window.location.href = '/thank-you.html';
+
+    } catch (error) {
+        console.error('Upgrade error:', error);
+        showToast(error.message || 'Failed to upgrade. Please try again.', 'error');
+        upgradeBtn.disabled = false;
+        upgradeBtn.textContent = originalText;
+    }
+}
+
+/**
+ * Check if user can add custom comparison stocks.
+ * This gates the feature for premium users only.
+ * Called when implementing HP-10 custom comparison stocks.
+ */
+function checkCustomStocksAccess() {
+    const user = authManager.getCurrentUser();
+
+    if (!user) {
+        // Not logged in - redirect to login
+        window.location.href = '/login.html';
+        return false;
+    }
+
+    if (!user.is_premium) {
+        // Show upgrade modal with context
+        openUpgradeModal("Custom comparison stocks are a premium feature. Upgrade to add your own benchmark stocks!");
+        return false;
+    }
+
+    return true;
+}
+
 function initStaticEventListeners() {
     // Logout button
     const logoutBtn = document.getElementById('logout-btn');
@@ -1513,14 +1636,37 @@ function updatePdfQuotaUI() {
 
     display.classList.remove('hidden');
 
-    const { remaining, limit } = pdfUploadQuota;
+    const { remaining, limit, is_premium } = pdfUploadQuota;
     const quotaText = display.querySelector('.quota-text');
 
+    // Premium users get unlimited uploads
+    if (is_premium || limit === null) {
+        quotaText.innerHTML = '<span class="text-yellow-600 font-medium">Premium</span> - Unlimited uploads';
+        display.classList.remove('text-red-600');
+        display.classList.add('text-gray-600');
+
+        if (dropZone) {
+            dropZone.classList.remove('opacity-50', 'pointer-events-none');
+        }
+        if (fileInput) {
+            fileInput.disabled = false;
+        }
+        return;
+    }
+
     if (remaining === 0) {
-        // Exhausted - disable upload
-        quotaText.textContent = `Daily limit reached (${limit}/${limit})`;
+        // Exhausted - disable upload and show upgrade option
+        quotaText.innerHTML = `Daily limit reached (${limit}/${limit}) - <button class="text-blue-600 underline hover:text-blue-800 upgrade-trigger-btn">Upgrade for unlimited</button>`;
         display.classList.remove('text-gray-600');
         display.classList.add('text-red-600');
+
+        // Add click handler for upgrade button
+        const upgradeBtn = quotaText.querySelector('.upgrade-trigger-btn');
+        if (upgradeBtn) {
+            upgradeBtn.addEventListener('click', () => {
+                openUpgradeModal("You've reached your daily PDF upload limit. Upgrade to Premium for unlimited uploads!");
+            });
+        }
 
         if (dropZone) {
             dropZone.classList.add('opacity-50', 'pointer-events-none');
@@ -1657,6 +1803,13 @@ async function handlePdfFile(file) {
 
         if (!response.ok) {
             if (response.status === 429) {
+                // Show upgrade modal instead of just an error
+                if (result.show_upgrade || result.code === 'QUOTA_EXCEEDED') {
+                    await fetchPdfUploadQuota();  // Refresh quota
+                    openUpgradeModal("You've reached your daily PDF upload limit. Upgrade to Premium for unlimited uploads!");
+                    return;
+                }
+
                 await fetchPdfUploadQuota();  // Refresh quota
                 throw new Error(result.error || 'Daily upload limit reached');
             }

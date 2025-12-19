@@ -82,6 +82,7 @@ def create_app():
     from app.routes.share import share_bp
     from app.routes.guest import guest_bp
     from app.routes.pdf_upload import pdf_upload_bp
+    from app.routes.upgrade import upgrade_bp
 
     app.register_blueprint(purchases_bp, url_prefix='/api')
     app.register_blueprint(portfolio_bp, url_prefix='/api')
@@ -91,6 +92,7 @@ def create_app():
     app.register_blueprint(share_bp, url_prefix='/api')
     app.register_blueprint(guest_bp, url_prefix='/api')
     app.register_blueprint(pdf_upload_bp, url_prefix='/api')
+    app.register_blueprint(upgrade_bp, url_prefix='/api')
 
     # Apply rate limits to specific blueprints
     # Guest/public endpoints: more restrictive (100/hour)
@@ -125,6 +127,11 @@ def create_app():
     @app.route('/share/<share_token>')
     def share_page(share_token):
         return app.send_static_file('share.html')
+
+    # Serve thank-you page
+    @app.route('/thank-you.html')
+    def thank_you_page():
+        return app.send_static_file('thank-you.html')
 
     # Serve favicon
     @app.route('/favicon.ico')

@@ -45,11 +45,22 @@ def get_upload_quota():
 
     Response: {
         used: number,
-        limit: number,
-        remaining: number,
-        resets_at: string (ISO datetime)
+        limit: number | null,
+        remaining: number | null,
+        resets_at: string (ISO datetime),
+        is_premium: boolean
     }
     """
+    # Premium users have unlimited uploads
+    if current_user.is_premium:
+        return jsonify({
+            'used': 0,
+            'limit': None,
+            'remaining': None,
+            'resets_at': _get_next_reset_time_iso(),
+            'is_premium': True
+        }), 200
+
     limit = current_app.config.get('PDF_DAILY_UPLOAD_LIMIT', 3)
     used = get_user_upload_count_today(current_user.id)
     remaining = max(0, limit - used)
@@ -58,7 +69,8 @@ def get_upload_quota():
         'used': used,
         'limit': limit,
         'remaining': remaining,
-        'resets_at': _get_next_reset_time_iso()
+        'resets_at': _get_next_reset_time_iso(),
+        'is_premium': False
     }), 200
 
 
@@ -72,21 +84,23 @@ def extract_trades():
     Request: multipart/form-data with 'file' field
     Response: {trades: [...], total_pages: N, notes: [...]}
     """
-    # Check daily upload limit FIRST (before any processing)
-    limit = current_app.config.get('PDF_DAILY_UPLOAD_LIMIT', 3)
-    used = get_user_upload_count_today(current_user.id)
+    # Check daily upload limit FIRST (before any processing) - skip for premium users
+    if not current_user.is_premium:
+        limit = current_app.config.get('PDF_DAILY_UPLOAD_LIMIT', 3)
+        used = get_user_upload_count_today(current_user.id)
 
-    if used >= limit:
-        return jsonify({
-            'error': 'Daily upload limit reached',
-            'code': 'QUOTA_EXCEEDED',
-            'quota': {
-                'used': used,
-                'limit': limit,
-                'remaining': 0,
-                'resets_at': _get_next_reset_time_iso()
-            }
-        }), 429
+        if used >= limit:
+            return jsonify({
+                'error': 'Daily upload limit reached',
+                'code': 'QUOTA_EXCEEDED',
+                'show_upgrade': True,
+                'quota': {
+                    'used': used,
+                    'limit': limit,
+                    'remaining': 0,
+                    'resets_at': _get_next_reset_time_iso()
+                }
+            }), 429
 
     # Log this upload attempt IMMEDIATELY (counts toward limit)
     upload_log = PdfUploadLog(user_id=current_user.id)
