@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Portfolio Share Image</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            width: 1080px;
+            height: 1080px;
+            overflow: hidden;
+        }
+    </style>
+</head>
+<body>
+    <div class="bg-gradient-to-br from-blue-500 to-purple-600 w-full h-full flex items-center justify-center p-16">
+        <div class="w-full max-w-3xl">
+            <h3 class="text-6xl font-bold mb-12 text-white">My Portfolio Performance</h3>
+
+            <!-- Your Return card -->
+            <div class="bg-white/10 backdrop-blur-sm border-4 border-white/30 rounded-2xl p-10 mb-10">
+                <div class="text-3xl text-blue-100 mb-3">Your Return</div>
+                <div class="text-8xl font-bold text-center {% if portfolio_return_pct >= 0 %}text-green-300{% else %}text-red-300{% endif %}">
+                    {{ '+' if portfolio_return_pct >= 0 else '' }}{{ '%.2f'|format(portfolio_return_pct) }}%
+                </div>
+            </div>
+
+            <!-- S&P 500 Return card (if spy_return_pct is not None) -->
+            {% if spy_return_pct is not none %}
+            <div class="bg-white/10 backdrop-blur-sm border-4 border-white/30 rounded-2xl p-8 mb-8">
+                <div class="text-2xl text-blue-100 mb-3">S&P 500 Return</div>
+                <div class="flex justify-between items-center">
+                    <span class="text-4xl font-semibold text-white">SPY</span>
+                    <span class="text-5xl font-bold {% if spy_return_pct >= 0 %}text-green-300{% else %}text-red-300{% endif %}">
+                        {{ '+' if spy_return_pct >= 0 else '' }}{{ '%.2f'|format(spy_return_pct) }}%
+                    </span>
+                </div>
+            </div>
+            {% endif %}
+
+            <!-- Best/Worst Benchmark cards (2 columns) -->
+            <div class="grid grid-cols-2 gap-8 mb-10">
+                <div class="bg-white/10 backdrop-blur-sm border-4 border-white/30 rounded-2xl p-8">
+                    <div class="text-2xl text-blue-100 mb-3">Best Benchmark</div>
+                    <div class="text-4xl font-semibold text-white mb-2">{{ best_benchmark_ticker }}</div>
+                    <div class="text-4xl font-bold {% if best_benchmark_return_pct >= 0 %}text-green-300{% else %}text-red-300{% endif %}">
+                        {{ '+' if best_benchmark_return_pct >= 0 else '' }}{{ '%.2f'|format(best_benchmark_return_pct) }}%
+                    </div>
+                </div>
+                <div class="bg-white/10 backdrop-blur-sm border-4 border-white/30 rounded-2xl p-8">
+                    <div class="text-2xl text-blue-100 mb-3">Worst Benchmark</div>
+                    <div class="text-4xl font-semibold text-white mb-2">{{ worst_benchmark_ticker }}</div>
+                    <div class="text-4xl font-bold {% if worst_benchmark_return_pct >= 0 %}text-green-300{% else %}text-red-300{% endif %}">
+                        {{ '+' if worst_benchmark_return_pct >= 0 else '' }}{{ '%.2f'|format(worst_benchmark_return_pct) }}%
+                    </div>
+                </div>
+            </div>
+
+            <!-- Opportunity Cost card -->
+            <div class="bg-white/10 backdrop-blur-sm border-4 border-white/30 rounded-2xl p-8">
+                <div class="text-2xl text-blue-100 mb-3">Opportunity Cost</div>
+                <div class="text-6xl font-bold text-center {% if opportunity_cost_pct >= 0 %}text-green-300{% else %}text-red-300{% endif %}">
+                    {{ '+' if opportunity_cost_pct >= 0 else '' }}{{ '%.2f'|format(opportunity_cost_pct) }}%
+                </div>
+                <div class="text-2xl text-blue-100 mt-3">vs {{ best_benchmark_ticker }}</div>
+            </div>
+
+            <!-- Footer -->
+            <div class="mt-10 pt-8 border-t-2 border-white/20 text-3xl text-blue-100 text-center">
+                Track your portfolio at Honest Portfolio
+            </div>
+        </div>
+    </div>
+</body>
+</html>
