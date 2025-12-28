@@ -672,7 +672,8 @@ function renderChart() {
         'META': { border: '#3b82f6', bg: 'rgba(59, 130, 246, 0.1)' },
         'GOOGL': { border: '#f59e0b', bg: 'rgba(245, 158, 11, 0.1)' },
         'NVDA': { border: '#84cc16', bg: 'rgba(132, 204, 22, 0.1)' },
-        'AMZN': { border: '#f97316', bg: 'rgba(249, 115, 22, 0.1)' }
+        'AMZN': { border: '#f97316', bg: 'rgba(249, 115, 22, 0.1)' },
+        'MONTHLY_DCA_SPY': { border: '#8b5cf6', bg: 'rgba(139, 92, 246, 0.1)' }
     };
 
     const datasets = [
@@ -690,12 +691,17 @@ function renderChart() {
     // Add alternatives
     for (const [ticker, values] of Object.entries(portfolioHistory.alternatives)) {
         const color = colors[ticker] || { border: '#9ca3af', bg: 'rgba(156, 163, 175, 0.1)' };
+
+        // Make Monthly DCA SPY dashed for distinction
+        const borderDash = ticker === 'MONTHLY_DCA_SPY' ? [5, 5] : [];
+
         datasets.push({
-            label: ticker,
+            label: ticker === 'MONTHLY_DCA_SPY' ? 'Monthly DCA SPY' : ticker,
             data: values,
             borderColor: color.border,
             backgroundColor: color.bg,
             borderWidth: 2,
+            borderDash: borderDash,
             fill: false,
             tension: 0.1
         });
@@ -1351,7 +1357,8 @@ function renderDetailChart(history) {
         'META': { border: '#3b82f6', bg: 'rgba(59, 130, 246, 0.1)' },
         'GOOGL': { border: '#f59e0b', bg: 'rgba(245, 158, 11, 0.1)' },
         'NVDA': { border: '#84cc16', bg: 'rgba(132, 204, 22, 0.1)' },
-        'AMZN': { border: '#f97316', bg: 'rgba(249, 115, 22, 0.1)' }
+        'AMZN': { border: '#f97316', bg: 'rgba(249, 115, 22, 0.1)' },
+        'MONTHLY_DCA_SPY': { border: '#8b5cf6', bg: 'rgba(139, 92, 246, 0.1)' }
     };
 
     const datasets = [
@@ -1368,12 +1375,17 @@ function renderDetailChart(history) {
 
     for (const [ticker, values] of Object.entries(history.alternatives)) {
         const color = colors[ticker] || { border: '#9ca3af', bg: 'rgba(156, 163, 175, 0.1)' };
+
+        // Make Monthly DCA SPY dashed for distinction
+        const borderDash = ticker === 'MONTHLY_DCA_SPY' ? [5, 5] : [];
+
         datasets.push({
-            label: ticker,
+            label: ticker === 'MONTHLY_DCA_SPY' ? 'Monthly DCA SPY' : ticker,
             data: values,
             borderColor: color.border,
             backgroundColor: color.bg,
             borderWidth: 2,
+            borderDash: borderDash,
             fill: false,
             tension: 0.1
         });

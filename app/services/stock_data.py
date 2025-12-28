@@ -1,6 +1,7 @@
 import yfinance as yf
 import math
-from datetime import datetime, timedelta
+import calendar
+from datetime import datetime, timedelta, date
 from sqlalchemy.exc import IntegrityError
 from app import db
 from app.models import PriceCache
@@ -216,3 +217,58 @@ def get_price_history(ticker: str, start_date, end_date=None) -> dict:
         print(f"Error fetching price history for {ticker}: {e}")
         db.session.rollback()
         return {}
+
+def get_last_trading_day_of_month(year: int, month: int) -> date:
+    """
+    Find the last trading day of a given month.
+
+    Strategy:
+    - Get last calendar day using calendar.monthrange
+    - Walk backwards up to 5 days to find a trading day
+    - Use is_trading_day() to verify
+    """
+    last_day = calendar.monthrange(year, month)[1]
+    candidate_date = date(year, month, last_day)
+
+    for i in range(5):
+        check_date = candidate_date - timedelta(days=i)
+        if check_date.weekday() >= 5:  # Skip weekends
+            continue
+        if is_trading_day(check_date):
+            return check_date
+
+    return None
+
+
+def generate_monthly_dca_dates(start_date: date, end_date: date = None) -> list:
+    """
+    Generate list of last trading days for each month in range.
+
+    Returns: List of (year, month, trading_date) tuples
+    """
+    if end_date is None:
+        end_date = datetime.now().date()
+
+    monthly_dates = []
+    current_date = start_date.replace(day=1)  # First day of start month
+
+    while current_date <= end_date:
+        last_trading = get_last_trading_day_of_month(
+            current_date.year,
+            current_date.month
+        )
+
+        if last_trading and last_trading <= end_date:
+            monthly_dates.append((
+                current_date.year,
+                current_date.month,
+                last_trading
+            ))
+
+        # Move to next month
+        if current_date.month == 12:
+            current_date = current_date.replace(year=current_date.year + 1, month=1)
+        else:
+            current_date = current_date.replace(month=current_date.month + 1)
+
+    return monthly_dates

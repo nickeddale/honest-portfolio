@@ -8,6 +8,10 @@ from app.services.stock_data import (
 )
 from datetime import datetime
 from collections import namedtuple
+from app.routes.portfolio import (
+    calculate_monthly_dca_spy,
+    calculate_monthly_dca_spy_history
+)
 
 guest_bp = Blueprint('guest', __name__)
 
@@ -216,6 +220,10 @@ def get_guest_portfolio_summary():
             'return_pct': round(alt_return_pct, 2)
         })
 
+    monthly_dca = calculate_monthly_dca_spy(purchases, current_prices)
+    if monthly_dca:
+        alternatives.append(monthly_dca)
+
     return jsonify({
         'actual': {
             'total_invested': round(total_invested, 2),
@@ -347,6 +355,13 @@ def get_guest_portfolio_history():
                         if comp_price:
                             alt_value += comp_shares * comp_price
             alt_values[comp_stock.ticker].append(round(alt_value, 2))
+
+    monthly_dca_values = calculate_monthly_dca_spy_history(
+        purchases,
+        price_histories,
+        dates
+    )
+    alt_values['MONTHLY_DCA_SPY'] = monthly_dca_values
 
     return jsonify({
         'dates': [d.isoformat() for d in dates],

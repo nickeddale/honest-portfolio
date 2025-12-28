@@ -1,6 +1,7 @@
 from flask import Blueprint, jsonify
 from flask_login import login_required, current_user
 import math
+from datetime import datetime
 from app.models import Purchase, ComparisonStock
 from app.services.stock_data import get_price_on_date, get_current_prices, get_price_history
 
@@ -14,6 +15,107 @@ def sanitize_float(value):
     if isinstance(value, float) and (math.isnan(value) or math.isinf(value)):
         return None
     return value
+
+
+def calculate_monthly_dca_spy(purchases, current_prices, price_histories=None):
+    """
+    Calculate Monthly DCA SPY alternative.
+
+    Simulates: Equal monthly investments in SPY on last trading day of each month.
+    """
+    if not purchases:
+        return None
+
+    from app.services.stock_data import (
+        generate_monthly_dca_dates,
+        get_price_on_date
+    )
+
+    total_invested = sum(p.amount for p in purchases)
+    start_date = min(p.purchase_date for p in purchases)
+    end_date = datetime.now().date()
+
+    monthly_dates = generate_monthly_dca_dates(start_date, end_date)
+
+    if not monthly_dates:
+        return None
+
+    monthly_investment = total_invested / len(monthly_dates)
+    spy_current_price = current_prices.get('SPY')
+
+    if not spy_current_price:
+        return None
+
+    # Accumulate shares from monthly purchases
+    total_shares = 0
+    for year, month, trading_date in monthly_dates:
+        if price_histories and 'SPY' in price_histories:
+            spy_price = price_histories['SPY'].get(trading_date)
+        else:
+            spy_price = get_price_on_date('SPY', trading_date)
+
+        if spy_price:
+            total_shares += monthly_investment / spy_price
+
+    current_value = total_shares * spy_current_price
+    gain_loss = current_value - total_invested
+    return_pct = (gain_loss / total_invested * 100) if total_invested > 0 else 0
+
+    return {
+        'ticker': 'MONTHLY_DCA_SPY',
+        'name': 'Monthly DCA SPY',
+        'total_invested': sanitize_float(total_invested),
+        'current_value': sanitize_float(round(current_value, 2)),
+        'gain_loss': sanitize_float(round(gain_loss, 2)),
+        'return_pct': sanitize_float(round(return_pct, 2))
+    }
+
+
+def calculate_monthly_dca_spy_history(purchases, price_histories, dates):
+    """
+    Calculate Monthly DCA SPY time series for history chart.
+
+    For each date: calculates cumulative value based on monthly DCA purchases made up to that point.
+    """
+    from app.services.stock_data import generate_monthly_dca_dates
+
+    if not purchases or 'SPY' not in price_histories:
+        return [None] * len(dates)
+
+    total_invested = sum(p.amount for p in purchases)
+    start_date = min(p.purchase_date for p in purchases)
+
+    all_monthly_dates = generate_monthly_dca_dates(start_date)
+    num_months = len(all_monthly_dates)
+
+    if num_months == 0:
+        return [None] * len(dates)
+
+    monthly_investment = total_invested / num_months
+
+    # Pre-compute shares bought on each monthly date
+    shares_by_date = {}
+    for year, month, trading_date in all_monthly_dates:
+        spy_price = price_histories['SPY'].get(trading_date)
+        if spy_price:
+            shares_by_date[trading_date] = monthly_investment / spy_price
+
+    # Calculate value for each date in series
+    values = []
+    for date in dates:
+        total_shares = sum(
+            shares for purchase_date, shares in shares_by_date.items()
+            if purchase_date <= date
+        )
+
+        spy_price = price_histories['SPY'].get(date)
+
+        if spy_price and total_shares > 0:
+            values.append(sanitize_float(round(total_shares * spy_price, 2)))
+        else:
+            values.append(None)
+
+    return values
 
 
 @portfolio_bp.route('/portfolio/summary', methods=['GET'])
@@ -88,6 +190,11 @@ def get_portfolio_summary():
             'gain_loss': sanitize_float(round(alt_gain_loss, 2)),
             'return_pct': sanitize_float(round(alt_return_pct, 2))
         })
+
+    # Calculate Monthly DCA SPY alternative
+    monthly_dca = calculate_monthly_dca_spy(purchases, current_prices)
+    if monthly_dca:
+        alternatives.append(monthly_dca)
 
     return jsonify({
         'actual': {
@@ -186,6 +293,14 @@ def get_portfolio_history():
                         if comp_price:
                             alt_value += comp_shares * comp_price
             alt_values[comp_stock.ticker].append(sanitize_float(round(alt_value, 2)))
+
+    # Calculate Monthly DCA SPY history
+    monthly_dca_values = calculate_monthly_dca_spy_history(
+        purchases,
+        price_histories,
+        dates
+    )
+    alt_values['MONTHLY_DCA_SPY'] = monthly_dca_values
 
     return jsonify({
         'dates': [d.isoformat() for d in dates],
