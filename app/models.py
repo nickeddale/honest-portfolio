@@ -21,6 +21,8 @@ class User(UserMixin, db.Model):
                                     lazy=True, cascade="all, delete-orphan")
     purchases = db.relationship('Purchase', backref='user',
                                lazy=True, cascade='all, delete-orphan')
+    sales = db.relationship('Sale', backref='user',
+                           lazy=True, cascade='all, delete-orphan')
 
     def to_dict_public(self):
         """Public user info (safe to expose to frontend)"""
@@ -76,6 +78,20 @@ class Purchase(db.Model):
     original_currency = db.Column(db.String(3), nullable=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
+    # Relationships
+    sale_assignments = db.relationship('PurchaseSaleAssignment', backref='purchase',
+                                      lazy=True, cascade='all, delete-orphan')
+
+    @property
+    def shares_sold(self):
+        """Calculate total shares sold from this purchase."""
+        return sum(assignment.shares_assigned for assignment in self.sale_assignments)
+
+    @property
+    def shares_remaining(self):
+        """Calculate shares remaining after sales."""
+        return self.shares_bought - self.shares_sold
+
     def to_dict(self):
         return {
             'id': self.id,
@@ -86,7 +102,70 @@ class Purchase(db.Model):
             'price_at_purchase': self.price_at_purchase,
             'original_amount': self.original_amount,
             'original_currency': self.original_currency,
+            'created_at': self.created_at.isoformat(),
+            'shares_remaining': self.shares_remaining
+        }
+
+
+class Sale(db.Model):
+    __tablename__ = 'sales'
+
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    ticker = db.Column(db.String(10), nullable=False)
+    sale_date = db.Column(db.Date, nullable=False)
+    shares_sold = db.Column(db.Float, nullable=False)
+    price_at_sale = db.Column(db.Float, nullable=False)
+    total_proceeds = db.Column(db.Float, nullable=False)
+
+    # Reinvestment tracking
+    reinvestment_purchase_id = db.Column(db.Integer, db.ForeignKey('purchases.id'), nullable=True)
+    reinvested_amount = db.Column(db.Float, nullable=True)
+    cash_retained = db.Column(db.Float, nullable=True)
+
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    # Relationships
+    purchase_assignments = db.relationship('PurchaseSaleAssignment', backref='sale',
+                                          lazy=True, cascade='all, delete-orphan')
+    reinvestment_purchase = db.relationship('Purchase', foreign_keys=[reinvestment_purchase_id],
+                                           backref='reinvested_from_sale')
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'ticker': self.ticker,
+            'sale_date': self.sale_date.isoformat(),
+            'shares_sold': self.shares_sold,
+            'price_at_sale': self.price_at_sale,
+            'total_proceeds': self.total_proceeds,
+            'reinvestment_purchase_id': self.reinvestment_purchase_id,
+            'reinvested_amount': self.reinvested_amount,
+            'cash_retained': self.cash_retained,
             'created_at': self.created_at.isoformat()
+        }
+
+
+class PurchaseSaleAssignment(db.Model):
+    __tablename__ = 'purchase_sale_assignments'
+
+    id = db.Column(db.Integer, primary_key=True)
+    purchase_id = db.Column(db.Integer, db.ForeignKey('purchases.id'), nullable=False)
+    sale_id = db.Column(db.Integer, db.ForeignKey('sales.id'), nullable=False)
+    shares_assigned = db.Column(db.Float, nullable=False)
+    cost_basis = db.Column(db.Float, nullable=False)
+    proceeds = db.Column(db.Float, nullable=False)
+    realized_gain_loss = db.Column(db.Float, nullable=False)
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'purchase_id': self.purchase_id,
+            'sale_id': self.sale_id,
+            'shares_assigned': self.shares_assigned,
+            'cost_basis': self.cost_basis,
+            'proceeds': self.proceeds,
+            'realized_gain_loss': self.realized_gain_loss
         }
 
 

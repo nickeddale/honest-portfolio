@@ -77,6 +77,7 @@ def create_app():
     from app.routes.purchases import purchases_bp
     from app.routes.portfolio import portfolio_bp
     from app.routes.stocks import stocks_bp
+    from app.routes.sales import sales_bp
     from app.routes.auth import auth_bp
     from app.routes.test_auth import test_auth_bp
     from app.routes.share import share_bp
@@ -87,6 +88,7 @@ def create_app():
     app.register_blueprint(purchases_bp, url_prefix='/api')
     app.register_blueprint(portfolio_bp, url_prefix='/api')
     app.register_blueprint(stocks_bp, url_prefix='/api')
+    app.register_blueprint(sales_bp, url_prefix='/api')
     app.register_blueprint(auth_bp, url_prefix='/api')
     app.register_blueprint(test_auth_bp, url_prefix='/api')
     app.register_blueprint(share_bp, url_prefix='/api')

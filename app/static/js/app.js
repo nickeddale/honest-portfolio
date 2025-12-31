@@ -3,6 +3,7 @@ const API_BASE = '/api';
 
 // State
 let purchases = [];
+let sales = [];
 let portfolioSummary = null;
 let portfolioHistory = null;
 let chart = null;
@@ -43,9 +44,28 @@ const calculatedAmountSpan = document.getElementById('calculated-amount');
 const tabQuickAdd = document.getElementById('tab-quick-add');
 const tabDetailedEntry = document.getElementById('tab-detailed-entry');
 const tabPdfUpload = document.getElementById('tab-pdf-upload');
+const tabRecordSale = document.getElementById('tab-record-sale');
 const panelQuickAdd = document.getElementById('panel-quick-add');
 const panelDetailedEntry = document.getElementById('panel-detailed-entry');
 const panelPdfUpload = document.getElementById('panel-pdf-upload');
+const panelRecordSale = document.getElementById('panel-record-sale');
+
+// Sale form elements
+const saleForm = document.getElementById('sale-form');
+const submitBtnSale = document.getElementById('submit-btn-sale');
+const tickerSaleSelect = document.getElementById('ticker-sale');
+const saleDateInput = document.getElementById('sale-date');
+const sharesSoldInput = document.getElementById('shares-sold');
+const priceSaleInput = document.getElementById('price-sale');
+const calculatedProceedsSpan = document.getElementById('calculated-proceeds');
+const sharesAvailableSpan = document.getElementById('shares-available');
+const fifoPreviewDiv = document.getElementById('fifo-preview');
+const fifoPreviewContent = document.getElementById('fifo-preview-content');
+const reinvestCheckbox = document.getElementById('reinvest-checkbox');
+const reinvestFields = document.getElementById('reinvest-fields');
+const reinvestTickerInput = document.getElementById('reinvest-ticker');
+const reinvestAmountInput = document.getElementById('reinvest-amount');
+const cashRetainedSpan = document.getElementById('cash-retained');
 
 // Shared form elements
 const formError = document.getElementById('form-error');
@@ -72,7 +92,8 @@ function switchTab(tab) {
     const tabs = [
         { tab: tabQuickAdd, panel: panelQuickAdd, name: 'quick-add' },
         { tab: tabDetailedEntry, panel: panelDetailedEntry, name: 'detailed-entry' },
-        { tab: tabPdfUpload, panel: panelPdfUpload, name: 'pdf-upload' }
+        { tab: tabPdfUpload, panel: panelPdfUpload, name: 'pdf-upload' },
+        { tab: tabRecordSale, panel: panelRecordSale, name: 'record-sale' }
     ];
 
     tabs.forEach(({ tab: tabEl, panel, name }) => {
@@ -96,6 +117,11 @@ function switchTab(tab) {
             }
         }
     });
+
+    // Populate ticker dropdown when switching to Record Sale tab
+    if (tab === 'record-sale') {
+        populateTickerSaleDropdown();
+    }
 }
 
 function setupDetailedEntryCalculation() {
@@ -141,9 +167,18 @@ async function init() {
     if (tabPdfUpload) {
         tabPdfUpload.addEventListener('click', () => switchTab('pdf-upload'));
     }
+    if (tabRecordSale) {
+        tabRecordSale.addEventListener('click', () => switchTab('record-sale'));
+    }
 
     // Setup auto-calculation for detailed entry
     setupDetailedEntryCalculation();
+
+    // Setup sale form handlers
+    if (saleForm) {
+        saleForm.addEventListener('submit', handleSaleSubmit);
+        setupSaleFormCalculations();
+    }
 
     // Initialize router
     initRouter();
@@ -245,6 +280,7 @@ async function loadData() {
     try {
         await Promise.all([
             loadPurchases(),
+            loadSales(),
             loadPortfolioSummary(),
             loadPortfolioHistory()
         ]);
@@ -271,6 +307,25 @@ async function loadPurchases() {
     } catch (error) {
         if (error.message !== 'Unauthorized') {
             console.error('Error loading purchases:', error);
+        }
+    }
+}
+
+async function loadSales() {
+    try {
+        // Guest mode: sales not supported
+        if (!authManager.isAuthenticated()) {
+            sales = [];
+            return;
+        }
+
+        // Authenticated mode: load from API
+        const response = await authManager.authFetch(`${API_BASE}/sales`);
+        if (!response.ok) throw new Error('Failed to load sales');
+        sales = await response.json();
+    } catch (error) {
+        if (error.message !== 'Unauthorized') {
+            console.error('Error loading sales:', error);
         }
     }
 }
@@ -517,6 +572,225 @@ async function handleDetailedEntrySubmit(e) {
     }
 }
 
+async function handleSaleSubmit(e) {
+    e.preventDefault();
+
+    if (!authManager.isAuthenticated()) {
+        showError('Please sign in to record sales');
+        return;
+    }
+
+    hideMessages();
+    submitBtnSale.disabled = true;
+    submitBtnSale.textContent = 'Recording...';
+
+    const formData = new FormData(saleForm);
+    const data = {
+        ticker: formData.get('ticker'),
+        sale_date: formData.get('sale_date'),
+        shares_sold: parseFloat(formData.get('shares_sold')),
+        price_at_sale: parseFloat(formData.get('price_at_sale'))
+    };
+
+    // Add reinvestment data if checkbox is checked
+    if (reinvestCheckbox.checked) {
+        const reinvestTicker = formData.get('reinvest_ticker');
+        const reinvestAmount = parseFloat(formData.get('reinvest_amount'));
+
+        if (!reinvestTicker || !reinvestAmount || reinvestAmount <= 0) {
+            showError('Please provide valid reinvestment details');
+            submitBtnSale.disabled = false;
+            submitBtnSale.textContent = 'Record Sale';
+            return;
+        }
+
+        data.reinvest_ticker = reinvestTicker.toUpperCase();
+        data.reinvest_amount = reinvestAmount;
+    }
+
+    try {
+        const response = await authManager.authFetch(`${API_BASE}/sales`, {
+            method: 'POST',
+            body: JSON.stringify(data)
+        });
+
+        const result = await response.json();
+
+        if (!response.ok) {
+            showError(result.error || 'Failed to record sale');
+            return;
+        }
+
+        const proceeds = data.shares_sold * data.price_at_sale;
+        showSuccess(`Recorded sale of ${data.shares_sold.toFixed(4)} shares of ${data.ticker} for ${formatCurrency(proceeds)}`);
+        saleForm.reset();
+        calculatedProceedsSpan.textContent = '$0.00';
+        cashRetainedSpan.textContent = '$0.00';
+        sharesAvailableSpan.textContent = '';
+        fifoPreviewDiv.classList.add('hidden');
+        reinvestFields.classList.add('hidden');
+        reinvestCheckbox.checked = false;
+
+        await loadData();
+    } catch (error) {
+        showError('Network error. Please try again.');
+    } finally {
+        submitBtnSale.disabled = false;
+        submitBtnSale.textContent = 'Record Sale';
+    }
+}
+
+function setupSaleFormCalculations() {
+    // Update calculated proceeds when shares or price change
+    const updateProceeds = () => {
+        const shares = parseFloat(sharesSoldInput.value) || 0;
+        const price = parseFloat(priceSaleInput.value) || 0;
+        const proceeds = shares * price;
+        calculatedProceedsSpan.textContent = formatCurrency(proceeds);
+
+        // Update cash retained if reinvesting
+        if (reinvestCheckbox.checked) {
+            const reinvestAmt = parseFloat(reinvestAmountInput.value) || 0;
+            const retained = proceeds - reinvestAmt;
+            cashRetainedSpan.textContent = formatCurrency(Math.max(0, retained));
+        }
+    };
+
+    sharesSoldInput.addEventListener('input', () => {
+        updateProceeds();
+        updateSharesAvailable();
+        updateFifoPreview();
+    });
+
+    priceSaleInput.addEventListener('input', updateProceeds);
+
+    // Show/hide reinvestment fields
+    reinvestCheckbox.addEventListener('change', (e) => {
+        if (e.target.checked) {
+            reinvestFields.classList.remove('hidden');
+            reinvestTickerInput.required = true;
+            reinvestAmountInput.required = true;
+        } else {
+            reinvestFields.classList.add('hidden');
+            reinvestTickerInput.required = false;
+            reinvestAmountInput.required = false;
+        }
+        updateProceeds();
+    });
+
+    // Update cash retained when reinvest amount changes
+    reinvestAmountInput.addEventListener('input', () => {
+        const proceeds = parseFloat(sharesSoldInput.value || 0) * parseFloat(priceSaleInput.value || 0);
+        const reinvestAmt = parseFloat(reinvestAmountInput.value) || 0;
+        const retained = proceeds - reinvestAmt;
+        cashRetainedSpan.textContent = formatCurrency(Math.max(0, retained));
+    });
+
+    // Update shares available when ticker changes
+    tickerSaleSelect.addEventListener('change', updateSharesAvailable);
+}
+
+function populateTickerSaleDropdown() {
+    if (!tickerSaleSelect) return;
+
+    // Get unique tickers with remaining shares > 0
+    const ownedStocks = new Map();
+
+    purchases.forEach(p => {
+        const ticker = p.ticker;
+        const sharesRemaining = p.shares_remaining || p.shares_bought || 0;
+
+        if (sharesRemaining > 0) {
+            if (!ownedStocks.has(ticker)) {
+                ownedStocks.set(ticker, 0);
+            }
+            ownedStocks.set(ticker, ownedStocks.get(ticker) + sharesRemaining);
+        }
+    });
+
+    // Populate dropdown
+    tickerSaleSelect.innerHTML = '<option value="">Select a stock...</option>';
+
+    Array.from(ownedStocks.entries())
+        .sort((a, b) => a[0].localeCompare(b[0]))
+        .forEach(([ticker, shares]) => {
+            const option = document.createElement('option');
+            option.value = ticker;
+            option.textContent = `${ticker} (${shares.toFixed(4)} shares available)`;
+            tickerSaleSelect.appendChild(option);
+        });
+
+    // Disable if no stocks available
+    if (ownedStocks.size === 0) {
+        tickerSaleSelect.disabled = true;
+        tickerSaleSelect.innerHTML = '<option value="">No stocks available to sell</option>';
+        submitBtnSale.disabled = true;
+    } else {
+        tickerSaleSelect.disabled = false;
+        submitBtnSale.disabled = false;
+    }
+}
+
+function updateSharesAvailable() {
+    const ticker = tickerSaleSelect.value;
+    if (!ticker) {
+        sharesAvailableSpan.textContent = '';
+        return;
+    }
+
+    const totalShares = purchases
+        .filter(p => p.ticker === ticker)
+        .reduce((sum, p) => sum + (p.shares_remaining || p.shares_bought || 0), 0);
+
+    sharesAvailableSpan.textContent = `${totalShares.toFixed(4)} shares available`;
+}
+
+async function updateFifoPreview() {
+    const ticker = tickerSaleSelect.value;
+    const sharesToSell = parseFloat(sharesSoldInput.value) || 0;
+
+    if (!ticker || sharesToSell <= 0) {
+        fifoPreviewDiv.classList.add('hidden');
+        return;
+    }
+
+    try {
+        const response = await authManager.authFetch(
+            `${API_BASE}/sales/preview?ticker=${encodeURIComponent(ticker)}&shares_sold=${sharesToSell}`
+        );
+
+        if (!response.ok) {
+            fifoPreviewDiv.classList.add('hidden');
+            return;
+        }
+
+        const preview = await response.json();
+
+        if (preview.lots && preview.lots.length > 0) {
+            fifoPreviewContent.innerHTML = `
+                <div class="text-sm">
+                    <p class="mb-2"><strong>Selling from ${preview.lots.length} lot(s):</strong></p>
+                    <ul class="space-y-1 list-disc list-inside">
+                        ${preview.lots.map(lot => `
+                            <li>${lot.shares.toFixed(4)} shares from ${formatDate(lot.purchase_date)}
+                                at ${formatCurrency(lot.price_at_purchase)}/share</li>
+                        `).join('')}
+                    </ul>
+                    ${preview.total_cost_basis ? `
+                        <p class="mt-2 font-semibold">Total cost basis: ${formatCurrency(preview.total_cost_basis)}</p>
+                    ` : ''}
+                </div>
+            `;
+            fifoPreviewDiv.classList.remove('hidden');
+        } else {
+            fifoPreviewDiv.classList.add('hidden');
+        }
+    } catch (error) {
+        console.error('Error fetching FIFO preview:', error);
+        fifoPreviewDiv.classList.add('hidden');
+    }
+}
+
 async function deletePurchase(id) {
     const confirmed = await showConfirmation({
         title: 'Delete Purchase',
@@ -545,34 +819,121 @@ async function deletePurchase(id) {
     }
 }
 
+async function deleteSale(id) {
+    const confirmed = await showConfirmation({
+        title: 'Delete Sale',
+        message: 'Are you sure you want to delete this sale? This will restore the shares to your holdings.',
+        confirmText: 'Delete',
+        cancelText: 'Cancel',
+        type: 'danger'
+    });
+
+    if (!confirmed) return;
+
+    try {
+        await authManager.authFetch(`${API_BASE}/sales/${id}`, { method: 'DELETE' });
+        showToast('Sale deleted successfully', 'success');
+        await loadData();
+    } catch (error) {
+        showToast('Failed to delete sale', 'error');
+    }
+}
+
 function renderPurchasesList() {
     if (purchases.length === 0) {
         purchasesList.innerHTML = '<p class="text-[var(--muted-foreground)]">No purchases yet</p>';
         return;
     }
 
-    purchasesList.innerHTML = purchases.map(p => `
-        <div class="purchase-item flex items-center justify-between p-3 bg-[var(--card)] border-2 border-[var(--border)] rounded shadow-md hover:shadow-none cursor-pointer transition-all"
-             data-purchase-id="${p.id}">
-            <div>
-                <span class="font-semibold text-[var(--card-foreground)]">${escapeHtml(p.ticker)}</span>
-                <span class="text-[var(--muted-foreground)] text-sm ml-2">${formatDate(p.purchase_date)}</span>
+    purchasesList.innerHTML = purchases.map(p => {
+        const sharesRemaining = p.shares_remaining !== undefined ? p.shares_remaining : p.shares_bought;
+        const isFullySold = sharesRemaining === 0;
+        const isPartiallySold = sharesRemaining < p.shares_bought;
+
+        // Get sales for this purchase
+        const purchaseSales = sales.filter(s => s.purchase_ids && s.purchase_ids.includes(p.id));
+
+        return `
+            <div class="purchase-item-wrapper mb-2">
+                <div class="purchase-item flex items-center justify-between p-3 bg-[var(--card)] border-2 border-[var(--border)] rounded shadow-md hover:shadow-none cursor-pointer transition-all ${isFullySold ? 'opacity-70' : ''}"
+                     data-purchase-id="${p.id}">
+                    <div class="flex-1">
+                        <div class="flex items-center gap-2">
+                            <span class="font-semibold text-[var(--card-foreground)]">${escapeHtml(p.ticker)}</span>
+                            <span class="text-[var(--muted-foreground)] text-sm">${formatDate(p.purchase_date)}</span>
+                            ${isFullySold ? '<span class="px-2 py-0.5 text-xs bg-red-100 border border-red-300 rounded text-red-700">Fully Sold</span>' : ''}
+                            ${isPartiallySold && !isFullySold ? '<span class="px-2 py-0.5 text-xs bg-yellow-100 border border-yellow-300 rounded text-yellow-700">Partially Sold</span>' : ''}
+                        </div>
+                        <div class="text-sm text-[var(--muted-foreground)] mt-1">
+                            ${sharesRemaining.toFixed(4)} / ${p.shares_bought.toFixed(4)} shares remaining @ ${formatCurrency(p.price_at_purchase)}
+                        </div>
+                    </div>
+                    <div class="flex items-center gap-4">
+                        <span class="text-[var(--card-foreground)]">${formatCurrency(p.amount)}</span>
+                        <button class="delete-purchase-btn p-1 border-2 border-[var(--border)] rounded shadow-md hover:shadow-none hover:translate-y-0.5 transition-all text-[var(--destructive)]"
+                                data-delete-id="${p.id}"
+                                onclick="event.stopPropagation();">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                            </svg>
+                        </button>
+                        <svg class="w-5 h-5 text-[var(--muted-foreground)]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+                        </svg>
+                    </div>
+                </div>
+                ${purchaseSales.length > 0 ? `
+                    <div class="ml-6 mt-2 space-y-1">
+                        ${purchaseSales.map(sale => {
+                            const saleProceeds = sale.shares_sold * sale.price_at_sale;
+                            const realizedGain = sale.realized_gain || 0;
+                            const gainClass = realizedGain >= 0 ? 'text-green-600' : 'text-red-600';
+
+                            return `
+                                <div class="flex items-center justify-between p-2 bg-gray-50 border border-gray-200 rounded text-sm">
+                                    <div class="flex items-center gap-2">
+                                        <svg class="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7l5 5m0 0l-5 5m5-5H6"/>
+                                        </svg>
+                                        <span class="text-gray-700">Sold ${sale.shares_sold.toFixed(4)} shares on ${formatDate(sale.sale_date)}</span>
+                                    </div>
+                                    <div class="flex items-center gap-3">
+                                        <span class="text-gray-600">${formatCurrency(saleProceeds)} proceeds</span>
+                                        <span class="${gainClass} font-medium">
+                                            ${realizedGain >= 0 ? '+' : ''}${formatCurrency(realizedGain)} gain
+                                        </span>
+                                        ${sale.reinvested_to ? `
+                                            <span class="px-2 py-0.5 text-xs bg-purple-100 border border-purple-300 rounded text-purple-700">
+                                                → ${escapeHtml(sale.reinvested_to)}
+                                            </span>
+                                        ` : ''}
+                                        <button class="delete-sale-btn p-1 text-red-600 hover:text-red-800"
+                                                data-delete-sale-id="${sale.id}"
+                                                onclick="event.stopPropagation();">
+                                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                                            </svg>
+                                        </button>
+                                    </div>
+                                </div>
+                            `;
+                        }).join('')}
+                    </div>
+                ` : ''}
             </div>
-            <div class="flex items-center gap-4">
-                <span class="text-[var(--card-foreground)]">${formatCurrency(p.amount)}</span>
-                <span class="text-[var(--muted-foreground)] text-sm">${p.shares_bought.toFixed(4)} shares @ ${formatCurrency(p.price_at_purchase)}</span>
-                <button class="delete-purchase-btn p-1 border-2 border-[var(--border)] rounded shadow-md hover:shadow-none hover:translate-y-0.5 transition-all text-[var(--destructive)]"
-                        data-delete-id="${p.id}">
-                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                    </svg>
-                </button>
-                <svg class="w-5 h-5 text-[var(--muted-foreground)]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
-                </svg>
-            </div>
-        </div>
-    `).join('');
+        `;
+    }).join('');
+
+    // Add event listeners for sale delete buttons
+    document.querySelectorAll('.delete-sale-btn').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const saleId = parseInt(btn.dataset.deleteSaleId);
+            if (saleId) {
+                deleteSale(saleId);
+            }
+        });
+    });
 }
 
 function renderSummaryCards() {
@@ -583,10 +944,33 @@ function renderSummaryCards() {
     // Total invested
     document.getElementById('total-invested').textContent = formatCurrency(actual.total_invested);
 
-    // Actual portfolio value
-    document.getElementById('actual-value').textContent = formatCurrency(actual.current_value);
-    document.getElementById('actual-return').textContent =
-        `${actual.gain_loss >= 0 ? '+' : ''}${formatCurrency(actual.gain_loss)} (${actual.return_pct.toFixed(2)}%)`;
+    // Actual portfolio value - now includes cash position and unrealized gains
+    const portfolioValue = actual.current_value + (actual.cash_position || 0);
+    const unrealizedGains = actual.unrealized_gains || 0;
+    const realizedGains = actual.realized_gains || 0;
+
+    document.getElementById('actual-value').textContent = formatCurrency(portfolioValue);
+
+    // Show both unrealized and realized gains if available
+    const returnParts = [];
+    if (unrealizedGains !== 0) {
+        returnParts.push(`Unrealized: ${unrealizedGains >= 0 ? '+' : ''}${formatCurrency(unrealizedGains)}`);
+    }
+    if (realizedGains !== 0) {
+        returnParts.push(`Realized: ${realizedGains >= 0 ? '+' : ''}${formatCurrency(realizedGains)}`);
+    }
+    if (actual.cash_position && actual.cash_position > 0) {
+        returnParts.push(`Cash: ${formatCurrency(actual.cash_position)}`);
+    }
+
+    // If no breakdown available, show total gain/loss
+    if (returnParts.length === 0) {
+        document.getElementById('actual-return').textContent =
+            `${actual.gain_loss >= 0 ? '+' : ''}${formatCurrency(actual.gain_loss)} (${actual.return_pct.toFixed(2)}%)`;
+    } else {
+        document.getElementById('actual-return').textContent = returnParts.join(' | ');
+    }
+
     document.getElementById('actual-return').className =
         `text-sm ${actual.gain_loss >= 0 ? 'text-[var(--success)]' : 'text-[var(--destructive)]'}`;
 
@@ -597,7 +981,7 @@ function renderSummaryCards() {
         document.getElementById('best-alt-name').textContent = `${best.name} (${best.ticker})`;
 
         // Opportunity cost
-        const oppCost = best.current_value - actual.current_value;
+        const oppCost = best.current_value - portfolioValue;
         document.getElementById('opportunity-cost').textContent = formatCurrency(Math.abs(oppCost));
         document.getElementById('opportunity-cost').className =
             `text-2xl font-bold ${oppCost > 0 ? 'text-[var(--destructive)]' : 'text-[var(--success)]'}`;

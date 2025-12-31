@@ -122,12 +122,23 @@ def calculate_monthly_dca_spy_history(purchases, price_histories, dates):
 @login_required
 def get_portfolio_summary():
     """Get portfolio summary for the current user."""
+    from app.models import Sale, PurchaseSaleAssignment
+
     purchases = Purchase.query.filter_by(user_id=current_user.id).all()
+    sales = Sale.query.filter_by(user_id=current_user.id).all()
     comparison_stocks = ComparisonStock.query.filter_by(is_default=True).all()
 
     if not purchases:
         return jsonify({
-            'actual': {'total_invested': 0, 'current_value': 0, 'gain_loss': 0, 'return_pct': 0},
+            'actual': {
+                'total_invested': 0,
+                'current_value': 0,
+                'unrealized_gains': 0,
+                'realized_gains': 0,
+                'cash_position': 0,
+                'gain_loss': 0,
+                'return_pct': 0
+            },
             'alternatives': []
         })
 
@@ -148,15 +159,35 @@ def get_portfolio_summary():
             price = get_price_on_date(comp_ticker, date)
             comp_prices_at_dates[(comp_ticker, date)] = price
 
-    # Calculate actual portfolio
+    # Calculate actual portfolio metrics
     total_invested = sum(p.amount for p in purchases)
-    actual_current_value = 0
+
+    # Calculate realized gains from sales
+    realized_gains = 0
+    for sale in sales:
+        for assignment in sale.purchase_assignments:
+            realized_gains += assignment.realized_gain_loss
+
+    # Calculate cash position from sales
+    cash_position = sum(sale.cash_retained or 0 for sale in sales)
+
+    # Calculate current holdings value using shares_remaining
+    current_holdings_value = 0
+    cost_basis_remaining = 0
 
     for purchase in purchases:
         current_price = current_prices.get(purchase.ticker)
         if current_price:
-            actual_current_value += purchase.shares_bought * current_price
+            current_holdings_value += purchase.shares_remaining * current_price
+        cost_basis_remaining += purchase.shares_remaining * purchase.price_at_purchase
 
+    # Calculate unrealized gains from remaining holdings
+    unrealized_gains = current_holdings_value - cost_basis_remaining
+
+    # Total current value includes holdings + cash
+    actual_current_value = current_holdings_value + cash_position
+
+    # Total gain/loss includes both realized and unrealized
     actual_gain_loss = actual_current_value - total_invested
     actual_return_pct = (actual_gain_loss / total_invested * 100) if total_invested > 0 else 0
 
@@ -200,6 +231,9 @@ def get_portfolio_summary():
         'actual': {
             'total_invested': sanitize_float(round(total_invested, 2)),
             'current_value': sanitize_float(round(actual_current_value, 2)),
+            'unrealized_gains': sanitize_float(round(unrealized_gains, 2)),
+            'realized_gains': sanitize_float(round(realized_gains, 2)),
+            'cash_position': sanitize_float(round(cash_position, 2)),
             'gain_loss': sanitize_float(round(actual_gain_loss, 2)),
             'return_pct': sanitize_float(round(actual_return_pct, 2))
         },
@@ -211,7 +245,10 @@ def get_portfolio_summary():
 @login_required
 def get_portfolio_history():
     """Get historical portfolio values for charting."""
+    from app.models import Sale, PurchaseSaleAssignment
+
     purchases = Purchase.query.filter_by(user_id=current_user.id).order_by(Purchase.purchase_date).all()
+    sales = Sale.query.filter_by(user_id=current_user.id).order_by(Sale.sale_date).all()
     comparison_stocks = ComparisonStock.query.filter_by(is_default=True).all()
 
     if not purchases:
@@ -264,19 +301,34 @@ def get_portfolio_history():
                 comp_shares = purchase.amount / comp_price_at_purchase_date
                 comp_shares_per_purchase[(comp_stock.ticker, purchase.id)] = comp_shares
 
+    # Step 3: Pre-compute shares sold on or before each date for each purchase
+    # Structure: {(purchase_id, date): shares_sold_by_date}
+    shares_sold_by_date = {}
+    for purchase in purchases:
+        for date in dates:
+            shares_sold = 0
+            for assignment in purchase.sale_assignments:
+                if assignment.sale.sale_date <= date:
+                    shares_sold += assignment.shares_assigned
+            shares_sold_by_date[(purchase.id, date)] = shares_sold
+
     # Calculate portfolio values for each date
     actual_values = []
     alt_values = {cs.ticker: [] for cs in comparison_stocks}
 
     for date in dates:
-        # Actual portfolio value on this date
+        # Actual portfolio value on this date (using shares_remaining on that date)
         actual_value = 0
         for purchase in purchases:
             if purchase.purchase_date <= date:
+                # Calculate shares remaining on this specific date
+                shares_sold = shares_sold_by_date.get((purchase.id, date), 0)
+                shares_remaining_on_date = purchase.shares_bought - shares_sold
+
                 ticker_prices = price_histories.get(purchase.ticker, {})
                 price = ticker_prices.get(date)
-                if price:
-                    actual_value += purchase.shares_bought * price
+                if price and shares_remaining_on_date > 0:
+                    actual_value += shares_remaining_on_date * price
         actual_values.append(sanitize_float(round(actual_value, 2)))
 
         # Alternative portfolio values using pre-computed shares
