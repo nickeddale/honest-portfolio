@@ -29,3 +29,8 @@ build/
 
 # Node
 node_modules/
+
+# Testing
+.playwright-mcp/
+playwright-report/
+test-results/
