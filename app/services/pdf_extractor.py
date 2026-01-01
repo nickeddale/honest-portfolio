@@ -1,22 +1,30 @@
 """
-PDF trade extraction service using OpenAI GPT-4 Vision.
+PDF trade extraction service using Mistral OCR + OpenAI ChatGPT.
 """
 
 import base64
 import json
+import io
 from datetime import datetime
 from typing import Dict, List, Optional
 import fitz  # PyMuPDF
 from openai import OpenAI
+from mistralai import Mistral
 from flask import current_app
 
 
 class PDFTradeExtractor:
-    """Extracts trade data from PDF documents using GPT-4 Vision."""
+    """Extracts trade data from PDF documents using Mistral OCR + ChatGPT."""
 
     EXTRACTION_PROMPT = """You are a financial document analyzer specializing in brokerage statements and trade confirmations.
 
 Extract all stock BUY transactions from this document.
+
+IMPORTANT CONTEXT:
+- This text was extracted from a PDF using OCR (Optical Character Recognition)
+- Tables are formatted in markdown
+- The text may contain headers, footers, page numbers, and OCR artifacts
+- Some formatting may be imperfect due to OCR processing
 
 For each BUY trade, extract:
 - ticker: The standard stock ticker symbol (e.g., AAPL, TSLA, MSFT)
@@ -43,6 +51,9 @@ Rules:
 - Be precise with numbers - do not round
 - If a ticker symbol is already shown (like "AAPL"), use it directly
 - Ignore mutual funds, ETFs with non-standard symbols unless clearly identifiable
+- Look for transaction tables, trade confirmations, or account activity sections
+- Be tolerant of OCR errors in company names but strict with numerical accuracy
+- If you see duplicate entries, include all (deduplication happens later)
 
 Return a JSON object with a "trades" array. If no trades found, return {"trades": []}.
 
@@ -61,163 +72,158 @@ Example output:
 }"""
 
     def __init__(self):
-        self.client = None
+        self.openai_client = None
+        self.mistral_client = None
 
-    def _get_client(self) -> OpenAI:
+    def _get_openai_client(self) -> OpenAI:
         """Lazy initialization of OpenAI client."""
-        if self.client is None:
+        if self.openai_client is None:
             api_key = current_app.config.get('OPENAI_API_KEY')
             if not api_key:
                 raise ValueError("OPENAI_API_KEY not configured")
-            self.client = OpenAI(api_key=api_key)
-        return self.client
+            self.openai_client = OpenAI(api_key=api_key)
+        return self.openai_client
 
-    def pdf_to_images(self, pdf_bytes: bytes) -> List[bytes]:
+    def _get_mistral_client(self) -> Mistral:
+        """Lazy initialization of Mistral client."""
+        if self.mistral_client is None:
+            api_key = current_app.config.get('MISTRAL_API_KEY')
+            if not api_key:
+                raise ValueError("MISTRAL_API_KEY not configured")
+            self.mistral_client = Mistral(api_key=api_key)
+        return self.mistral_client
+
+    def pdf_to_markdown(self, pdf_bytes: bytes) -> dict:
         """
-        Convert PDF pages to PNG images.
-
-        Args:
-            pdf_bytes: PDF file content as bytes
-
-        Returns:
-            List of PNG image bytes, one per page
-
-        Raises:
-            ValueError: If PDF cannot be opened or is empty
-        """
-        try:
-            # Open PDF from memory stream
-            pdf_document = fitz.open(stream=pdf_bytes, filetype="pdf")
-
-            if pdf_document.page_count == 0:
-                raise ValueError("PDF document is empty")
-
-            images = []
-
-            # Render each page at 2x resolution (144 DPI) for better OCR
-            zoom = 2.0
-            matrix = fitz.Matrix(zoom, zoom)
-
-            for page_num in range(pdf_document.page_count):
-                page = pdf_document[page_num]
-
-                # Render page to pixmap (image)
-                pix = page.get_pixmap(matrix=matrix)
-
-                # Convert to PNG bytes
-                png_bytes = pix.tobytes("png")
-                images.append(png_bytes)
-
-            pdf_document.close()
-            return images
-
-        except Exception as e:
-            raise ValueError(f"Failed to convert PDF to images: {str(e)}")
-
-    def extract_trades_from_image(self, image_bytes: bytes) -> Dict:
-        """
-        Extract trades from a single image using GPT-4 Vision.
-
-        Args:
-            image_bytes: PNG image bytes
-
-        Returns:
-            Dict with 'trades' array and optional 'notes'
-
-        Raises:
-            ValueError: If API call fails or response is invalid
-        """
-        try:
-            # Encode image to base64
-            base64_image = base64.b64encode(image_bytes).decode('utf-8')
-
-            client = self._get_client()
-
-            # Call OpenAI GPT-4 Vision API
-            response = client.chat.completions.create(
-                model="gpt-4o",
-                messages=[
-                    {
-                        "role": "user",
-                        "content": [
-                            {
-                                "type": "text",
-                                "text": self.EXTRACTION_PROMPT
-                            },
-                            {
-                                "type": "image_url",
-                                "image_url": {
-                                    "url": f"data:image/png;base64,{base64_image}"
-                                }
-                            }
-                        ]
-                    }
-                ],
-                response_format={"type": "json_object"},
-                max_tokens=2000
-            )
-
-            # Parse JSON response
-            content = response.choices[0].message.content
-            result = json.loads(content)
-
-            # Ensure trades array exists
-            if "trades" not in result:
-                result["trades"] = []
-
-            return result
-
-        except json.JSONDecodeError as e:
-            raise ValueError(f"Failed to parse JSON response: {str(e)}")
-        except Exception as e:
-            raise ValueError(f"Failed to extract trades from image: {str(e)}")
-
-    def extract_trades_from_pdf(self, pdf_bytes: bytes) -> Dict:
-        """
-        Extract all trades from a PDF document.
+        Convert PDF to markdown using Mistral OCR API.
 
         Args:
             pdf_bytes: PDF file content as bytes
 
         Returns:
             Dict with:
-                - trades: List of validated trade dicts
-                - total_pages: Number of pages processed
-                - notes: List of notes from extraction
-                - errors: List of errors encountered (if any)
+                - markdown: Extracted markdown text
+                - pages: Number of pages processed
+                - metadata: Optional OCR metadata
         """
-        all_trades = []
+        try:
+            client = self._get_mistral_client()
+
+            # Encode PDF to base64 data URI
+            base64_pdf = base64.b64encode(pdf_bytes).decode('utf-8')
+            data_uri = f"data:application/pdf;base64,{base64_pdf}"
+
+            # Call Mistral OCR API with base64-encoded PDF
+            ocr_response = client.ocr.process(
+                model="mistral-ocr-latest",
+                document={
+                    "type": "document_url",
+                    "document_url": data_uri
+                },
+                table_format="markdown",
+                include_image_base64=False
+            )
+
+            # Extract markdown (adjust field names based on actual API response)
+            markdown_text = getattr(ocr_response, 'text', '') or \
+                           getattr(ocr_response, 'content', '') or \
+                           str(ocr_response)
+
+            if not markdown_text or markdown_text.strip() == "":
+                raise ValueError("OCR returned empty text. PDF may be corrupted or image-only.")
+
+            page_count = getattr(ocr_response, 'page_count', 1)
+
+            current_app.logger.info(f"OCR extracted {len(markdown_text)} chars from {page_count} pages")
+
+            return {
+                "markdown": markdown_text,
+                "pages": page_count,
+                "metadata": getattr(ocr_response, 'metadata', None)
+            }
+
+        except Exception as e:
+            if "rate limit" in str(e).lower():
+                raise ValueError("OCR service temporarily unavailable. Please try again in a few minutes.")
+            elif "quota" in str(e).lower():
+                raise ValueError("OCR service quota exceeded. Please contact support.")
+            raise ValueError(f"Failed to perform OCR on PDF: {str(e)}")
+
+    def extract_trades_from_markdown(self, markdown_text: str) -> Dict:
+        """
+        Extract trades from markdown text using ChatGPT.
+
+        Args:
+            markdown_text: OCR-extracted markdown content
+
+        Returns:
+            Dict with 'trades' array and optional 'notes'
+        """
+        try:
+            client = self._get_openai_client()
+
+            # Call OpenAI ChatGPT with text-only input
+            response = client.chat.completions.create(
+                model="gpt-4o",
+                messages=[
+                    {
+                        "role": "user",
+                        "content": f"{self.EXTRACTION_PROMPT}\n\n--- DOCUMENT TEXT ---\n{markdown_text}"
+                    }
+                ],
+                response_format={"type": "json_object"},
+                max_tokens=2000
+            )
+
+            content = response.choices[0].message.content
+            result = json.loads(content)
+
+            if "trades" not in result:
+                result["trades"] = []
+
+            return result
+
+        except json.JSONDecodeError as e:
+            current_app.logger.error(f"ChatGPT returned invalid JSON: {content}")
+            raise ValueError(f"Failed to parse extraction results. Document format may not be supported.")
+        except Exception as e:
+            if "rate_limit" in str(e).lower():
+                raise ValueError("Trade extraction service temporarily busy. Try again in a few minutes.")
+            raise ValueError(f"Failed to extract trades from markdown: {str(e)}")
+
+    def extract_trades_from_pdf(self, pdf_bytes: bytes) -> Dict:
+        """
+        Extract all trades from a PDF using Mistral OCR + ChatGPT.
+
+        Returns:
+            Dict with trades, total_pages, notes, and errors
+        """
         all_notes = []
         errors = []
 
         try:
-            # Convert PDF to images
-            images = self.pdf_to_images(pdf_bytes)
-            total_pages = len(images)
+            # Step 1: Convert PDF to markdown using Mistral OCR
+            current_app.logger.info("Starting Mistral OCR extraction")
+            ocr_result = self.pdf_to_markdown(pdf_bytes)
+            markdown_text = ocr_result["markdown"]
+            total_pages = ocr_result["pages"]
 
-            # Extract trades from each page
-            for page_num, image_bytes in enumerate(images, start=1):
-                try:
-                    result = self.extract_trades_from_image(image_bytes)
+            # Step 2: Extract trades from markdown using ChatGPT
+            current_app.logger.info("Starting ChatGPT trade extraction")
+            extraction_result = self.extract_trades_from_markdown(markdown_text)
 
-                    # Collect trades
-                    page_trades = result.get("trades", [])
-                    all_trades.extend(page_trades)
+            all_trades = extraction_result.get("trades", [])
+            if "notes" in extraction_result:
+                all_notes.append(extraction_result["notes"])
 
-                    # Collect notes
-                    if "notes" in result:
-                        all_notes.append(f"Page {page_num}: {result['notes']}")
+            current_app.logger.info(f"Extracted {len(all_trades)} raw trades")
 
-                except Exception as e:
-                    error_msg = f"Page {page_num}: {str(e)}"
-                    errors.append(error_msg)
-                    current_app.logger.warning(f"Failed to extract from page {page_num}: {e}")
-
-            # Deduplicate trades
+            # Deduplicate and validate (existing methods)
             unique_trades = self._deduplicate_trades(all_trades)
+            current_app.logger.info(f"After deduplication: {len(unique_trades)} unique trades")
 
-            # Validate and normalize trades
             validated_trades = self._validate_trades(unique_trades)
+            current_app.logger.info(f"After validation: {len(validated_trades)} valid trades")
 
             return {
                 "trades": validated_trades,
@@ -226,13 +232,26 @@ Example output:
                 "errors": errors if errors else None
             }
 
-        except Exception as e:
-            current_app.logger.error(f"PDF extraction failed: {e}")
+        except ValueError as e:
+            error_msg = str(e)
+            current_app.logger.error(f"PDF extraction failed: {error_msg}")
+            errors.append(error_msg)
+
             return {
                 "trades": [],
                 "total_pages": 0,
-                "notes": [],
-                "errors": [str(e)]
+                "notes": all_notes,
+                "errors": errors
+            }
+        except Exception as e:
+            current_app.logger.error(f"Unexpected error in PDF extraction: {e}")
+            errors.append(f"Unexpected error: {str(e)}")
+
+            return {
+                "trades": [],
+                "total_pages": 0,
+                "notes": all_notes,
+                "errors": errors
             }
 
     def _deduplicate_trades(self, trades: List[Dict]) -> List[Dict]:

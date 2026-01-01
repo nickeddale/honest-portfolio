@@ -164,7 +164,7 @@ def extract_trades():
     except ValueError as e:
         # Handle configuration errors (like missing API key)
         error_msg = str(e)
-        if 'OPENAI_API_KEY' in error_msg:
+        if 'OPENAI_API_KEY' in error_msg or 'MISTRAL_API_KEY' in error_msg:
             return jsonify({'error': 'PDF extraction is not configured. Please contact the administrator.'}), 503
         current_app.logger.error(f"Value error extracting trades from PDF: {e}")
         return jsonify({'error': error_msg}), 400
