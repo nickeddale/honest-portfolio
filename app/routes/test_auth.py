@@ -12,6 +12,7 @@ def create_test_user():
     """
     Create a test user and log them in.
     Only available when ENABLE_TEST_AUTH is True.
+    Test user has premium status (no upload limits).
     """
     if not current_app.config.get('ENABLE_TEST_AUTH'):
         return jsonify({'error': 'Test authentication is disabled'}), 403
@@ -25,6 +26,14 @@ def create_test_user():
     }
 
     user = AuthService.authenticate_with_provider('test', user_info)
+
+    # Grant premium status to test user (removes upload limits)
+    if not user.is_premium:
+        user.is_premium = True
+        user.premium_since = db.func.now()
+        db.session.commit()
+        db.session.refresh(user)  # Refresh object to reflect database state
+
     login_user(user, remember=True)
 
     return jsonify({

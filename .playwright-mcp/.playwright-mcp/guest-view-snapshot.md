@@ -1,0 +1,77 @@
+### Page state
+- Page URL: http://localhost:5001/static/index.html
+- Page Title: Honest Portfolio
+- Page Snapshot:
+```yaml
+- generic [ref=e2]:
+  - banner [ref=e3]:
+    - generic [ref=e4]:
+      - heading "Honest Portfolio" [level=1] [ref=e5]
+      - paragraph [ref=e6]: Track the opportunity cost of your stock purchases
+      - paragraph [ref=e7]: Enter your stock purchases and see how they would have performed if you had invested the same amount in benchmark stocks like SPY, AAPL, or NVDA instead. Compare your actual returns against what could have been.
+    - generic [ref=e8]:
+      - generic [ref=e9]: Guest Mode
+      - button "Sign In" [ref=e10] [cursor=pointer]
+  - generic [ref=e11]:
+    - heading "Add Stock Purchase" [level=2] [ref=e12]
+    - generic [ref=e13]:
+      - button "Quick Add" [ref=e14] [cursor=pointer]
+      - button "Detailed Entry" [ref=e15] [cursor=pointer]
+      - button "PDF Upload" [ref=e16] [cursor=pointer]
+      - button "Record Sale" [ref=e17] [cursor=pointer]
+    - generic [ref=e18]:
+      - generic [ref=e19]:
+        - generic [ref=e20]:
+          - generic [ref=e21]: Stock Ticker
+          - textbox "Stock Ticker" [ref=e22]:
+            - /placeholder: e.g., TSLA
+        - generic [ref=e23]:
+          - generic [ref=e24]: Purchase Date
+          - textbox "Purchase Date" [ref=e25]
+        - generic [ref=e26]:
+          - generic [ref=e27]: Total Investment ($)
+          - spinbutton "Total Investment ($)" [ref=e28]
+        - button "Add Purchase" [ref=e30] [cursor=pointer]
+      - paragraph [ref=e31]: Price will be automatically fetched from market data.
+  - generic [ref=e32]:
+    - generic [ref=e33]:
+      - heading "Total Invested" [level=3] [ref=e34]
+      - paragraph [ref=e35]: $0.00
+    - generic [ref=e36]:
+      - heading "Your Portfolio Value" [level=3] [ref=e37]
+      - paragraph [ref=e38]: $0.00
+      - paragraph [ref=e39]: +$0.00 (0.00%)
+    - generic [ref=e40]:
+      - heading "Best Alternative" [level=3] [ref=e41]
+      - paragraph [ref=e42]: $0.00
+      - paragraph
+    - generic [ref=e43]:
+      - heading "Opportunity Cost" [level=3] [ref=e44]
+      - generic [ref=e45]:
+        - paragraph [ref=e46]: $0.00
+        - paragraph
+      - generic [ref=e47] [cursor=pointer]:
+        - img [ref=e48]
+        - paragraph [ref=e50]:
+          - text: Upgrade to Premium
+          - text: to see your top missed opportunity
+  - generic [ref=e51]:
+    - heading "Portfolio Performance Over Time" [level=2] [ref=e52]
+    - paragraph [ref=e54]: Add a purchase to see the chart
+  - generic [ref=e55]:
+    - heading "Detailed Comparison" [level=2] [ref=e56]
+    - table [ref=e58]:
+      - rowgroup [ref=e59]:
+        - row "Stock Invested Current Value Gain/Loss Return %" [ref=e60]:
+          - columnheader "Stock" [ref=e61]
+          - columnheader "Invested" [ref=e62]
+          - columnheader "Current Value" [ref=e63]
+          - columnheader "Gain/Loss" [ref=e64]
+          - columnheader "Return %" [ref=e65]
+      - rowgroup [ref=e66]:
+        - row "No purchases yet" [ref=e67]:
+          - cell "No purchases yet" [ref=e68]
+  - generic [ref=e69]:
+    - heading "Your Purchases" [level=2] [ref=e70]
+    - paragraph [ref=e72]: No purchases yet
+```

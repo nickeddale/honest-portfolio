@@ -331,10 +331,19 @@
                 <p id="best-alt-value" class="text-2xl font-bold text-green-600">$0.00</p>
                 <p id="best-alt-name" class="text-sm text-gray-500"></p>
             </div>
-            <div class="bg-[var(--card)] border-2 border-[var(--border)] rounded shadow-md hover:shadow-none transition-all p-6">
+            <div id="opportunity-cost-card" class="bg-[var(--card)] border-2 border-[var(--border)] rounded shadow-md hover:shadow-none transition-all p-6">
                 <h3 class="text-sm font-medium text-gray-500">Opportunity Cost</h3>
-                <p id="opportunity-cost" class="text-2xl font-bold text-red-600">$0.00</p>
-                <p id="opportunity-cost-desc" class="text-sm text-gray-500"></p>
+                <div id="opportunity-cost-content">
+                    <p id="opportunity-cost" class="text-2xl font-bold text-red-600">$0.00</p>
+                    <p id="opportunity-cost-desc" class="text-sm text-gray-500"></p>
+                </div>
+                <!-- Premium lock overlay (hidden by default) -->
+                <div id="opportunity-cost-lock" class="hidden premium-locked-overlay">
+                    <svg class="premium-lock-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/>
+                    </svg>
+                    <p class="premium-lock-text">Upgrade to Premium<br>to see your top missed opportunity</p>
+                </div>
             </div>
         </section>
 

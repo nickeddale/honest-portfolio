@@ -7,13 +7,18 @@ argument-hint: "[ticket-id|'next']"
 
 Pull a ticket from Linear and create a detailed implementation plan.
 
+### FIRST: Enter Planning Mode
+**IMPORTANT: Before doing anything else, call the `EnterPlanMode` tool to enter planning mode.**
+
+This ensures all exploration and planning happens in a structured, read-only way before any implementation begins.
+
 ### Arguments
 - If no argument or "next": Get the first ticket from Todo or Backlog
 - If ticket ID provided (e.g., "ND-8"): Get that specific ticket
 
 **Ticket requested:** $ARGUMENTS
 
-### Workflow Steps
+### Workflow Steps (in Planning Mode)
 
 1. **Fetch the ticket from Linear**
    - If no argument or "next" was provided, use `mcp__linear-server__list_issues` with state "Todo" first
@@ -29,7 +34,8 @@ Pull a ticket from Linear and create a detailed implementation plan.
    - Search for related functionality, similar implementations, or affected components
 
 3. **Draft implementation plan**
-   - Create a detailed plan including:
+   - Write the plan to the plan file (as directed by planning mode)
+   - Include:
      - **Summary**: Brief description of the task
      - **Root cause** (for bugs) or **Requirements** (for features)
      - **Files to modify**: List specific file paths
@@ -41,9 +47,8 @@ Pull a ticket from Linear and create a detailed implementation plan.
      - After testing: Update Linear ticket to "In Review"
      - After merge/completion: Update Linear ticket to "Done"
 
-4. **Present plan for approval**
-   - Show the complete plan to the user
-   - Ask: "Does this plan look good? Should I proceed with updating the Linear ticket?"
+4. **Exit planning mode for approval**
+   - Call `ExitPlanMode` to present the plan to the user
    - Wait for user approval before making any changes
 
 5. **On approval: Update Linear ticket**

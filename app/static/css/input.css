@@ -65,3 +65,50 @@ h1, h2, h3, h4, h5, h6 {
     padding: 0.125rem 0.25rem;
     border-radius: 0.25rem;
 }
+
+/* Premium Lock Styles */
+.premium-locked {
+    position: relative;
+    cursor: pointer;
+}
+
+.premium-locked-blur {
+    filter: blur(8px);
+    user-select: none;
+    pointer-events: none;
+}
+
+.premium-locked-overlay {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    background: rgba(255, 255, 255, 0.95);
+    border-radius: 0.25rem;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.premium-locked-overlay:hover {
+    background: rgba(255, 255, 255, 0.98);
+}
+
+.premium-locked-overlay.hidden {
+    display: none !important;
+}
+
+.premium-lock-icon {
+    width: 2rem;
+    height: 2rem;
+    color: #f59e0b;
+    margin-bottom: 0.5rem;
+}
+
+.premium-lock-text {
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: #1f2937;
+    text-align: center;
+}

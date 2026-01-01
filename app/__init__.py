@@ -44,6 +44,15 @@ def create_app():
     csrf.init_app(app)
     limiter.init_app(app)
 
+    # Exempt premium users from rate limiting
+    @limiter.request_filter
+    def premium_user_exempt():
+        """Exempt premium users from all rate limiting."""
+        from flask_login import current_user
+        if current_user.is_authenticated and current_user.is_premium:
+            return True  # True means skip rate limiting
+        return False  # False means apply rate limiting
+
     # Security headers via Talisman
     # Disable HTTPS forcing in development, enable in production
     force_https = os.environ.get('FLASK_ENV') == 'production'

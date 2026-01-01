@@ -146,6 +146,14 @@ async function init() {
     // Update user UI (handles both guest and authenticated states)
     updateUserUI();
 
+    // Re-render when auth state changes (login/logout/premium upgrade)
+    authManager.onAuthStateChanged((user) => {
+        if (portfolioSummary) {
+            renderSummaryCards();
+            renderComparisonTable();
+        }
+    });
+
     // Show loading state
     showLoadingState();
 
@@ -810,7 +818,14 @@ async function deletePurchase(id) {
             await loadData();
         } else {
             // Authenticated mode: use API
-            await authManager.authFetch(`${API_BASE}/purchases/${id}`, { method: 'DELETE' });
+            const response = await authManager.authFetch(`${API_BASE}/purchases/${id}`, { method: 'DELETE' });
+            const result = await response.json();
+
+            if (!response.ok) {
+                showToast(result.error || 'Failed to delete purchase', 'error');
+                return;
+            }
+
             showToast('Purchase deleted successfully', 'success');
             await loadData();
         }
@@ -831,7 +846,14 @@ async function deleteSale(id) {
     if (!confirmed) return;
 
     try {
-        await authManager.authFetch(`${API_BASE}/sales/${id}`, { method: 'DELETE' });
+        const response = await authManager.authFetch(`${API_BASE}/sales/${id}`, { method: 'DELETE' });
+        const result = await response.json();
+
+        if (!response.ok) {
+            showToast(result.error || 'Failed to delete sale', 'error');
+            return;
+        }
+
         showToast('Sale deleted successfully', 'success');
         await loadData();
     } catch (error) {
@@ -982,11 +1004,47 @@ function renderSummaryCards() {
 
         // Opportunity cost
         const oppCost = best.current_value - portfolioValue;
-        document.getElementById('opportunity-cost').textContent = formatCurrency(Math.abs(oppCost));
-        document.getElementById('opportunity-cost').className =
-            `text-2xl font-bold ${oppCost > 0 ? 'text-[var(--destructive)]' : 'text-[var(--success)]'}`;
-        document.getElementById('opportunity-cost-desc').textContent =
-            oppCost > 0 ? `You could have earned more with ${best.ticker}` : 'Your picks are outperforming!';
+        const isPremium = isPremiumUser();
+
+        const oppCostCard = document.getElementById('opportunity-cost-card');
+        const oppCostContent = document.getElementById('opportunity-cost-content');
+        const oppCostLock = document.getElementById('opportunity-cost-lock');
+
+        if (isPremium) {
+            // Premium user - show full data
+            oppCostContent.classList.remove('premium-locked-blur');
+            oppCostLock.classList.add('hidden');
+            oppCostCard.classList.remove('premium-locked');
+            oppCostCard.style.cursor = 'default';
+            oppCostCard.onclick = null;
+
+            document.getElementById('opportunity-cost').textContent = formatCurrency(Math.abs(oppCost));
+            document.getElementById('opportunity-cost').className =
+                `text-2xl font-bold ${oppCost > 0 ? 'text-[var(--destructive)]' : 'text-[var(--success)]'}`;
+            document.getElementById('opportunity-cost-desc').textContent =
+                oppCost > 0 ? `You could have earned more with ${best.ticker}` : 'Your picks are outperforming!';
+        } else {
+            // Non-premium user - blur and lock
+            oppCostContent.classList.add('premium-locked-blur');
+            oppCostLock.classList.remove('hidden');
+            oppCostCard.classList.add('premium-locked');
+
+            // Populate with dummy data for blur effect
+            document.getElementById('opportunity-cost').textContent = '$X,XXX.XX';
+            document.getElementById('opportunity-cost-desc').textContent = 'Premium feature';
+
+            // Add click handler to open upgrade modal
+            oppCostCard.onclick = () => {
+                if (authManager.isAuthenticated()) {
+                    openUpgradeModal('Unlock Opportunity Cost tracking to see which stock you should have bought instead. Upgrade to Premium!');
+                } else {
+                    showToast('Please sign in to unlock premium features', 'info');
+                    setTimeout(() => {
+                        document.querySelector('.google-signin-btn')?.click();
+                    }, 1500);
+                }
+            };
+        }
     }
 
     // Show share button when there's data
@@ -1003,6 +1061,7 @@ function renderComparisonTable() {
     }
 
     const { actual, alternatives } = portfolioSummary;
+    const isPremium = isPremiumUser();
 
     // Combine actual and alternatives
     const rows = [
@@ -1018,25 +1077,58 @@ function renderComparisonTable() {
     // Sort by current value descending
     rows.sort((a, b) => b.current_value - a.current_value);
 
-    comparisonTbody.innerHTML = rows.map((row, idx) => `
-        <tr class="border-b border-[var(--border)] hover:bg-[var(--primary)]/10 transition-colors ${row.isActual ? 'bg-[var(--primary)]/5' : ''} ${idx === 0 ? 'ring-2 ring-[var(--success)]' : ''}">
-            <td class="px-6 py-4 whitespace-nowrap">
-                <div class="flex items-center">
+    // Find the best alternative (first non-actual row)
+    const bestAlternativeIndex = rows.findIndex(row => !row.isActual);
+
+    comparisonTbody.innerHTML = rows.map((row, idx) => {
+        const isBestAlternative = idx === bestAlternativeIndex;
+        const shouldBlur = isBestAlternative && !isPremium;
+
+        return `
+        <tr class="border-b border-[var(--border)] hover:bg-[var(--primary)]/10 transition-colors ${row.isActual ? 'bg-[var(--primary)]/5' : ''} ${idx === 0 ? 'ring-2 ring-[var(--success)]' : ''} ${shouldBlur ? 'premium-locked cursor-pointer' : ''}"
+            ${shouldBlur ? 'data-premium-locked="true"' : ''}>
+            <td class="px-6 py-4 whitespace-nowrap ${shouldBlur ? 'relative' : ''}">
+                <div class="flex items-center ${shouldBlur ? 'premium-locked-blur' : ''}">
                     ${idx === 0 ? '<span class="text-[var(--success)] mr-2">👑</span>' : ''}
                     <span class="font-medium ${row.isActual ? 'text-[var(--primary)]' : 'text-[var(--foreground)]'}">${escapeHtml(row.name || row.ticker)}</span>
                     ${row.isActual ? '<span class="ml-2 px-2 py-1 text-xs border-2 border-[var(--border)] rounded bg-[var(--primary)]/10 text-[var(--primary)]">You</span>' : ''}
                 </div>
+                ${shouldBlur ? `
+                <div class="absolute inset-0 flex items-center justify-center">
+                    <svg class="w-5 h-5 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/>
+                    </svg>
+                </div>
+                ` : ''}
             </td>
-            <td class="px-6 py-4 whitespace-nowrap text-right text-[var(--muted-foreground)]">${formatCurrency(row.total_invested)}</td>
-            <td class="px-6 py-4 whitespace-nowrap text-right font-medium text-[var(--foreground)]">${formatCurrency(row.current_value)}</td>
-            <td class="px-6 py-4 whitespace-nowrap text-right ${row.gain_loss >= 0 ? 'text-[var(--success)]' : 'text-[var(--destructive)]'}">
+            <td class="px-6 py-4 whitespace-nowrap text-right text-[var(--muted-foreground)] ${shouldBlur ? 'premium-locked-blur' : ''}">${formatCurrency(row.total_invested)}</td>
+            <td class="px-6 py-4 whitespace-nowrap text-right font-medium text-[var(--foreground)] ${shouldBlur ? 'premium-locked-blur' : ''}">${formatCurrency(row.current_value)}</td>
+            <td class="px-6 py-4 whitespace-nowrap text-right ${row.gain_loss >= 0 ? 'text-[var(--success)]' : 'text-[var(--destructive)]'} ${shouldBlur ? 'premium-locked-blur' : ''}">
                 ${row.gain_loss >= 0 ? '+' : ''}${formatCurrency(row.gain_loss)}
             </td>
-            <td class="px-6 py-4 whitespace-nowrap text-right ${row.return_pct >= 0 ? 'text-[var(--success)]' : 'text-[var(--destructive)]'}">
+            <td class="px-6 py-4 whitespace-nowrap text-right ${row.return_pct >= 0 ? 'text-[var(--success)]' : 'text-[var(--destructive)]'} ${shouldBlur ? 'premium-locked-blur' : ''}">
                 ${row.return_pct >= 0 ? '+' : ''}${row.return_pct.toFixed(2)}%
             </td>
         </tr>
-    `).join('');
+        `;
+    }).join('');
+
+    // Add click handlers to locked rows
+    if (!isPremium) {
+        const lockedRows = comparisonTbody.querySelectorAll('[data-premium-locked="true"]');
+        lockedRows.forEach(row => {
+            row.onclick = () => {
+                if (authManager.isAuthenticated()) {
+                    openUpgradeModal('Unlock the top performing alternative stock to see what you missed. Upgrade to Premium!');
+                } else {
+                    showToast('Please sign in to unlock premium features', 'info');
+                    setTimeout(() => {
+                        document.querySelector('.google-signin-btn')?.click();
+                    }, 1500);
+                }
+            };
+        });
+    }
 }
 
 function renderChart() {
@@ -1149,6 +1241,18 @@ function formatCurrency(value) {
         style: 'currency',
         currency: 'USD'
     }).format(value);
+}
+
+/**
+ * Check if the current user has premium access
+ * @returns {boolean} True if user is premium
+ */
+function isPremiumUser() {
+    if (!authManager.isAuthenticated()) {
+        return false;
+    }
+    const user = authManager.getCurrentUser();
+    return user && user.is_premium === true;
 }
 
 function formatDate(dateStr) {
@@ -2162,7 +2266,7 @@ async function handlePdfFile(file) {
     }
 
     // Check quota before attempting upload
-    if (pdfUploadQuota && pdfUploadQuota.remaining <= 0) {
+    if (pdfUploadQuota && pdfUploadQuota.remaining !== null && pdfUploadQuota.remaining <= 0) {
         showPdfStatus('Daily upload limit reached. Try again tomorrow.', 'error');
         return;
     }
