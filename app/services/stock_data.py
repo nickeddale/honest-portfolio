@@ -62,11 +62,17 @@ def get_current_prices(tickers: list) -> dict:
         return {}
 
 def validate_ticker(ticker: str) -> bool:
-    """Check if a ticker symbol is valid."""
+    """Check if a ticker symbol is valid (works for stocks and ETFs)."""
+    from app.models import ComparisonStock
+
+    # Fast path: comparison stocks are always valid
+    if ComparisonStock.query.filter_by(ticker=ticker.upper()).first():
+        return True
+
+    # Full validation using download (works for stocks AND ETFs)
     try:
-        stock = yf.Ticker(ticker)
-        info = stock.info
-        return info.get('regularMarketPrice') is not None or info.get('previousClose') is not None
+        data = yf.download(ticker, period='5d', progress=False)
+        return not data.empty and 'Close' in data.columns
     except Exception:
         return False
 
